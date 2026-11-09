@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "survivor-tagging"
+version = "0.0.1"
+description = "NIDAR AirMouse survivor localisation and grid tagging core library (no ROS dependency)."
+# ASSUMPTION: >=3.10. Verify against the Python shipped on the Pi 5 OS image (open question H1).
+requires-python = ">=3.10"
+# Unpinned until the Pi 5 numpy version is known. Dev machine: numpy 2.4.2 (measured).
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Lets `python -m pytest` import the src-layout package without an install step.
+pythonpath = ["src"]
