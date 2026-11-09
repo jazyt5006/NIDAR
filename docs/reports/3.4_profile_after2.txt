@@ -1,0 +1,50 @@
+== FULL RECOMPUTE (2000 stored) ==
+         4484599 function calls (4484598 primitive calls) in 2.401 seconds
+
+   Ordered by: internal time
+   List reduced from 276 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     4750    0.232    0.000    0.400    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:224(view_bins)
+     3025    0.179    0.000    0.398    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\grid.py:166(cell_probabilities)
+     2556    0.135    0.000    0.396    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:252(fuse)
+    72214    0.107    0.000    0.218    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\linalg\_linalg.py:2598(norm)
+    25301    0.084    0.000    0.286    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\types.py:255(failure)
+    64618    0.075    0.000    0.075    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+     1222    0.062    0.000    1.687    0.001 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:453(_update_frame)
+    15779    0.060    0.000    0.089    0.000 {built-in method builtins.sorted}
+    72214    0.052    0.000    0.052    0.000 {method 'dot' of 'numpy.ndarray' objects}
+   258888    0.049    0.000    0.074    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\grid.py:146(_phi_s)
+     2000    0.046    0.000    0.105    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\transforms.py:410(camera_to_map)
+     2556    0.045    0.000    0.564    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:594(_refuse)
+    44017    0.041    0.000    0.041    0.000 {built-in method numpy.array}
+    50602    0.039    0.000    0.098    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\_core\fromnumeric.py:86(_wrapreduction_any_all)
+   231772    0.039    0.000    0.039    0.000 {method 'setdefault' of 'dict' objects}
+
+
+
+== LIVE FEED (whole stream, Layers 1-5) ==
+         10008293 function calls (10008259 primitive calls) in 6.681 seconds
+
+   Ordered by: internal time
+   List reduced from 612 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     4243    0.191    0.000    0.326    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:224(view_bins)
+   121498    0.183    0.000    0.373    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\linalg\_linalg.py:2598(norm)
+    13651    0.170    0.000    0.947    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\output.py:413(step)
+    12803    0.166    0.000    0.964    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:766(_tag)
+     2694    0.164    0.000    0.359    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\grid.py:166(cell_probabilities)
+   139750    0.159    0.000    0.373    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\enum.py:1596(__or__)
+     2562    0.149    0.000    1.491    0.001 D:\Study Material\College\NIDAR\src\survivor_tagging\geometry.py:382(estimate_survivor_point)
+     2695    0.142    0.000    0.362    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:252(fuse)
+     1222    0.128    0.000    0.455    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:608(_merge)
+    18043    0.128    0.000    0.128    0.000 {method 'partition' of 'numpy.ndarray' objects}
+     2562    0.127    0.000    0.127    0.000 {method 'argsort' of 'numpy.ndarray' objects}
+    12269    0.125    0.000    0.125    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\corrections.py:403(item_reasons)
+    71111    0.122    0.000    0.122    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+   137924    0.113    0.000    0.610    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\output.py:279(record_flags)
+   130555    0.108    0.000    0.202    0.000 {built-in method builtins.max}
+
+
+

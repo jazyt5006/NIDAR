@@ -1,0 +1,11 @@
+measurement                                            before ms    after ms  speed-up
+full recompute, whole history, 500 stored                3333.92      961.40      3.5x
+full recompute, whole history, 1000 stored               5241.15     2203.10      2.4x
+full recompute, whole history, 2000 stored               8654.86     1350.25      6.4x
+affected_tracks, whole history, 2000                     6442.06     1435.59      4.5x
+full recompute, last-4 s frame correction, 2000          6859.25     2165.53      3.2x
+affected_tracks, last-4 s frame correction, 2000          427.98      224.96      1.9x
+live Layer 2 per observation (median)                       0.11        0.10      1.1x
+live Layer 3 per observation (median)                       0.35        0.03     10.8x
+live Layer 4 per observation (median)                       1.74        0.60      2.9x
+live Layer 4 per observation (mean)                         2.30        0.65      3.5x

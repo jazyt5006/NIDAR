@@ -1,0 +1,16 @@
+# Grid registration (library type GridRegistration). Nothing is guessed: every field is required.
+float64[2] origin_in_map_m          # official grid origin in map coordinates
+float64 yaw_map_to_grid_rad         # angle from map +x to grid +x, counter-clockwise about map +z
+bool axis_flip_x
+bool axis_flip_y
+int32 index_base                    # 0 or 1
+string numbering                    # ij | row_major_label | alnum
+float64 cell_size_m
+uint32 n_cells_x                    # 0 = extent unknown
+uint32 n_cells_y
+uint32 version                      # monotonic; older = stale, equal = duplicate or conflict
+bool valid                          # false = never publish CONFIRMED official cells
+---
+bool accepted
+string reason                       # empty when accepted, else a library failure code and detail
+uint32 current_version

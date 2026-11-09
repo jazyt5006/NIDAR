@@ -1,145 +1,36 @@
-# Survivor Tagging: Questions for the Team and Organisers
+# Survivor Tagging: Open Questions
 
-Hi all. I'm building the survivor localisation and grid tagging library (detection + depth -> map position -> official
-grid cell -> survivor tag). Scoring depends on the *correct grid cell*, so I need a few facts from each of you.
-For each question there is the default I will code against until you answer. If a default is wrong, tell me early:
-it changes the design, not just a number. Short answers are fine.
+One table, no duplicates, ordered by impact on the competition score and on what we can build next. "Default now" is what
+the code assumes until the answer arrives; a wrong default changes the design, not only a number. Short answers are fine.
+Answer owners: organisers (NIDAR), SLAM teammate, detection teammate, controls team, hardware owner.
+Merged in this version: the old O7 into O2 (cases a to c) and O5 (the lying-body case). All other IDs are unchanged;
+O8 is new.
 
----
-
-## Detection teammate
-
-**D1. What exactly does each detection message contain?** (bbox format: pixels or normalised; xyxy or xywh;
-confidence; class; track id; image timestamp; frame id; message/topic type)
-- Why: I project the box into depth. Wrong format or missing timestamp = wrong position.
-- Default ASSUMPTION: pixel xyxy, confidence 0-1, optional track id, and the *image capture* timestamp copied from the
-  camera frame (not inference-finish time).
-
-**D2. Which camera do detections come from: D435i colour stream or the Pi Camera Module 3 Wide?**
-- Why: D435i depth can be used directly only if detections are on the D435i colour image with aligned depth. Another
-  camera needs a full cross-camera calibration.
-- Default ASSUMPTION: D435i colour stream, with depth aligned to colour. If it's the Pi camera, I will reject detections
-  (DEPTH_FRAME_MISMATCH) until we calibrate.
-
-**D3. Which timestamp do you put on detections, and from which clock?**
-- Why: I must look up the drone pose at the moment the image was taken, not when you finished inference.
-- Default ASSUMPTION: the camera frame's header stamp, passed through unchanged.
-
-**D4. Does the model reliably detect the competition dummies (lying, sitting, partially hidden)?** Any test numbers?
-- Why: if dummies are often missed or flicker, I need more tolerant tracking; if postures are mostly prone, ground
-  position estimation changes.
-- Default ASSUMPTION: unknown recall; I treat every single detection as a CANDIDATE only.
-
-**D5. Detection rate (Hz) and latency on the Pi?**
-- Why: sizes my pose buffer and staleness limits.
-- Default ASSUMPTION: unknown; staleness limit 1 s (configurable).
-
-## SLAM teammate
-
-**S1. Is the pose full 3D (x, y, z, roll, pitch, yaw) or planar (x, y, yaw)? If planar, where do altitude and
-roll/pitch come from (FC, rangefinder, D435i IMU)?**
-- Why: a tilted camera with a planar-only pose gives wrong floor positions.
-- Default ASSUMPTION: planar SLAM + altitude and attitude from another source, which must be identified. Until then,
-  tags cannot become CONFIRMED.
-
-**S2. Pose topic or tf frames, and the publish rate?** (e.g. `map` -> `base_link` via tf2, or a PoseStamped topic)
-- Why: I interpolate between poses around each image time; the rate sets the maximum allowed gap.
-- Default ASSUMPTION: tf2 `map` -> `base_link`; rate unknown, gap limit configurable.
-
-**S3. Which clock are the pose timestamps in, and is it the same clock as the camera?**
-- Why: comparing two unrelated clocks gives the wrong pose.
-- Default ASSUMPTION: both use ROS time on the same Pi; offset 0 is *not* assumed and must be checked.
-
-**S4. Does the backend expose loop-closure corrections, i.e. can I get corrected historical poses (or a correction
-event)? Which SLAM package and version?**
-- Why: after a loop closure, earlier survivor positions move. I store observations so I can recompute them, but only if
-  I can get corrected poses.
-- Default ASSUMPTION: no correction interface; positions are computed once and a limitation is logged.
-
-**S6. Is the drone's height above the floor part of the pose (map z relative to the floor), and is the arena floor
-flat and level? (ties to S1)**
-- Why: floor removal in Layer 1 needs the floor plane in the camera frame (pose height + floor height). A sloped or
-  uneven floor, or a pose without a reliable z, makes the floor plane wrong.
-- Default ASSUMPTION: the floor is one flat, level plane at a configured `map.floor_z_m`; floor removal stays off
-  until the height source is confirmed.
-
-**S5. Where is the `map` origin set (take-off point?), and is the map ever re-initialised mid-flight?**
-- Why: needed for registering the map to the official grid.
-- Default ASSUMPTION: origin at take-off, never reset.
-
-## Controls team (simulation)
-
-**C1. Which simulator are you using (Gazebo version, Isaac, AirSim, custom)? Does it render RGB-D and give
-ground-truth survivor positions?**
-- Why: I want to test the library end-to-end with known truth before hardware.
-- Default ASSUMPTION: I provide a synthetic harness; your simulator plugs in later.
-
-**C2. How do you want to feed my library: direct Python calls per frame, recorded files, or ROS 2 topics?**
-- Why: decides whether I ship a Python API first or ROS 2 nodes first.
-- Default ASSUMPTION: direct Python calls (`process(detections, depth, intrinsics)`, `add_pose(pose)`), ROS 2 later.
-
-**C3. Can the simulator give camera intrinsics, camera mount pose and drone pose with timestamps on one clock?**
-- Why: same inputs the real system needs.
-- Default ASSUMPTION: yes, all on simulator time.
-
-## Hardware owner
-
-**H1. OS image and Python version on the Pi 5 (Raspberry Pi OS Bookworm? Ubuntu 24.04?), and numpy version?**
-- Why: library compatibility.
-- Default ASSUMPTION: Python >= 3.10 with numpy available.
-
-**H2. ROS 2 distribution (Humble, Jazzy, ...) and whether it runs natively or in Docker?**
-- Why: decides the wrapper package and message types.
-- Default ASSUMPTION: unknown; the core library has no ROS dependency, so nothing is blocked yet.
-
-**H3. RealSense status: librealsense and realsense-ros versions, firmware, and does depth stream reliably on the Pi?
-Which resolution and fps?**
-- Why: depth quality and frame rate drive everything in Layer 1.
-- Default ASSUMPTION: aligned depth to colour available; resolution and fps read from the driver.
-
-**H4. Camera mounting: exact position (x, y, z in m from the body origin) and angles (forward, tilted down by how many
-degrees?). Is there a CAD drawing or measurement?**
-- Why: a 5 degree error in tilt at 3 m range is about 0.26 m of floor error, a quarter of a cell.
-- Default ASSUMPTION: none. Extrinsics are required config; without them, no tag can be CONFIRMED.
-
-**H5. Which telemetry radio and real data rate to the GCS?**
-- Why: sizes the tag messages.
-- Default ASSUMPTION: tens of kbps; I designed a 25-byte tag record plus periodic snapshots (< 1 kbps).
-
-## Organisers (NIDAR)
-
-**O1. Official grid definition: origin (which corner), axis directions, cell size, numbering/labels (e.g. A1 or
-(row, col), 0- or 1-based), entry cell, and do walls lie on grid lines?**
-- Why: scoring is per correct cell. A wrong origin or axis flip makes every tag wrong.
-- Default ASSUMPTION: none. Registration is required config; without it no official cell is CONFIRMED. For tests only:
-  1 m cells, origin at lower-left, 0-based (i, j).
-
-**O2. Are wrong or extra survivor tags penalised? Is there a limit on tags?**
-- Why: decides whether we submit uncertain (provisional) tags at mission end or only confirmed ones.
-- Default ASSUMPTION: unknown; end-of-mission policy is a config switch, default "confirmed only".
-
-**O3. How must the survivor map be delivered to the judges (format, at what moment, from the GCS screen)?**
-- Why: our output format must match.
-- Default ASSUMPTION: GCS shows tags live; no file format assumed.
-
-**O4. What do dummies look like (size, clothing, posture), and can more than one be in the same cell?**
-- Why: detection and duplicate-merging thresholds.
-- Default ASSUMPTION: human-sized; two survivors can be in adjacent cells; same-cell survivors are kept separate only
-  if more than 0.5 m apart (configurable).
-
-**O5. If a survivor lies across two grid cells, which point of the person decides the cell?**
-- Why: a prone person is 1.7 m long and can span two 1 m cells; scoring is per cell.
-- Default ASSUMPTION: the cell containing the centre of the body.
-
-**O6. How are two survivors in the same grid cell scored: one tag for the cell, or one tag per survivor? Are two
-tags in one cell allowed?**
-- Why: decides whether two nearby tracks stay two tags or are combined into one cell tag at the end of the mission.
-- Default ASSUMPTION: one tag per survivor (two tracks stay two tags, even in the same cell).
-
-**O7. Please confirm exactly how these are scored (refines O2 and O5): (a) a tag in the wrong cell, (b) an extra tag
-for a survivor that is already correctly tagged, (c) a tag where there is no survivor; and (d) for a lying survivor
-spanning two cells, is the cell decided by the body centre, the head or the torso?**
-- Why: the expected-value commit threshold is P / (40 + P) with P the penalty per wrong/extra tag (substep 3.1c). With
-  P unknown we use 0.5, which is right only if P = 40. (d) decides which point Layer 1 must estimate for prone bodies.
-- Default ASSUMPTION: `score.wrong_tag_penalty_assumed` unset (threshold 0.5, the result carries a "penalty unknown"
-  note); (a), (b), (c) assumed to cost the same; (d) body centre (O5).
+| # | ID | Question | Why it matters | Default we use now | Who |
+|---|---|---|---|---|---|
+| 1 | O1 | Official grid: origin (which corner), axis directions, numbering/labels (A1 or (row, col); 0- or 1-based), entry cell, size of the grid, do walls lie on grid lines? | Scoring is per correct cell. A wrong origin or an axis flip makes every tag wrong. | None. Registration is required config; without it no official cell is CONFIRMED. Tests only: 1 m cells, origin lower-left, 0-based (i, j). | organisers |
+| 2 | H4 | Camera mounting: position (x, y, z in m from the body origin) and angles (tilt down by how many degrees, roll, yaw)? CAD drawing or measurement? | 5 degrees of tilt error at 3 m range is about 0.26 m on the floor, a quarter of a cell. | None. `extr.T_body_camera` is required; without it nothing is CONFIRMED. | hardware owner |
+| 3 | S1 | Is the pose full 3D (x, y, z, roll, pitch, yaw) or planar (x, y, yaw)? If planar, where do altitude and attitude come from (flight controller, rangefinder, D435i IMU)? | A tilted camera with a planar-only pose gives wrong floor positions. | Full 3D assumed in simulation only (`l2.pose_mode` is required config). With planar SLAM, tags cannot become CONFIRMED until the extra source is identified. | SLAM teammate |
+| 4 | D2 | Do detections come from the D435i colour stream (with depth aligned to colour) or from another camera (Pi Camera Module 3 Wide)? | Another camera needs a full cross-camera calibration before depth can be used. | D435i colour with aligned depth. Otherwise detections are rejected (DEPTH_FRAME_MISMATCH). | detection teammate |
+| 5 | S3 | Which clock are the pose timestamps in, and is it the same clock as the camera and detections? | Comparing unrelated clocks gives the wrong pose, so a wrong position. | Same ROS clock on the Pi. Offset 0 is NOT assumed: `clock.camera_to_pose_offset_ns` is required config and must be checked. | SLAM teammate |
+| 6 | O2 | Are wrong or extra tags penalised (a) wrong cell, (b) second tag for a survivor already tagged, (c) tag where there is no survivor? Is there a limit on tags? | Decides the end-of-mission policy: only confirmed tags, or also uncertain ones. The simulation optimum moves from threshold 0.5 (P low) to 0.667 (P high). | Unknown. `score.wrong_tag_penalty_assumed` unset (threshold 0.5 with a "penalty unknown" note). Interim simulation choice: `expected_value` at 0.667 (3.3b R-C); `l5.end_of_mission_commit_policy` stays unset. (a) to (c) assumed to cost the same. | organisers |
+| 7 | D1 | What exactly does a detection message contain: bbox format (pixels or normalised; xyxy or xywh), confidence, class, track id, image timestamp, frame id, message type? | I project the box into depth. A wrong format or a missing timestamp gives a wrong position. | Pixel xyxy, confidence 0-1, optional track id, image capture timestamp copied from the camera frame. | detection teammate |
+| 8 | D3 | Which timestamp and which clock do detections carry? | The pose must be looked up at image capture time, not at inference end. | The camera frame header stamp, passed through unchanged. | detection teammate |
+| 9 | S2 | Pose topic or tf frames, and the publish rate (for example `map` to `base_link` via tf2 or a PoseStamped topic)? | The rate sets the maximum interpolation gap and the pose buffer size. | tf2 `map` to `base_link`; rate unknown, `l2.max_interp_gap_s` is required config. | SLAM teammate |
+| 10 | S4 | Does SLAM expose corrected historical poses or a correction event after a loop closure? Which package and version? | Layer 5 can only move earlier tags if it gets corrections. Without them, loop closures leave duplicate or shifted tags. | No correction interface: `l5.correction_source = none`; positions are computed once, a limitation is logged. Both `history` and `frame_correction` are implemented and simulation tested. | SLAM teammate |
+| 11 | O5 | If a survivor (for example a lying one, 1.7 m long) spans two cells, which point decides the cell: body centre, head or torso? | Prone bodies span two 1 m cells; Layer 1 must estimate the right point. | The cell containing the centre of the body. | organisers |
+| 12 | O8 (new) | How close can survivors or dummies be placed to each other (minimum centre-to-centre distance; adjacent cells; touching)? | Sets `l4.min_separate_survivor_distance_m` (now 0.5 m): a smaller true spacing could make Layer 4 drop a real second person as a near-duplicate. Simulation found no loss at 0.30 m but the evidence is thin. | 0.5 m (ASSUMPTION), simulation tested down to 0.30 m. | organisers |
+| 13 | O6 | How are two survivors in the same cell scored: one tag per survivor, or one tag for the cell? Are two tags in one cell allowed? | Decides whether two close tracks stay two tags or merge into one cell tag at the end. | One tag per survivor. | organisers |
+| 14 | D4 | Does the model reliably detect the dummies (lying, sitting, partly hidden)? Test numbers? | Missed or flickering detections need more tolerant tracking; mostly prone dummies change the ground-position estimate. | Unknown recall; every single detection is only a CANDIDATE. | detection teammate |
+| 15 | O4 | What do the dummies look like (size, clothing, posture)? | Detection and size/shape assumptions in Layer 1 (standing 0.5 x 0.3 x 1.7 m etc. are simulation boxes). | Human-sized. | organisers |
+| 16 | S6 | Is the drone height above the floor part of the pose (map z relative to the floor)? Is the arena floor flat and level? | Floor removal in Layer 1 needs the floor plane. It is OFF because it failed its simulation rule; real depth data may change that. | One flat level plane at `map.floor_z_m` (unset); floor removal stays off. | SLAM teammate |
+| 17 | H3 | RealSense status: librealsense and realsense-ros versions, firmware, stable depth on the Pi, resolution and fps? | Depth quality and frame rate drive Layer 1. | Aligned depth available; resolution, fps and intrinsics are read from the driver. | hardware owner |
+| 18 | S5 | Where is the `map` origin set (take-off point?) and is the map ever re-initialised mid-flight? | Needed to register the map to the grid; a reset invalidates stored tags. | Origin at take-off, never reset. Layer 5 accepts registration updates (versioned). | SLAM teammate |
+| 19 | H5 | Which telemetry radio and what real data rate to the GCS? | Sizes tag messages and snapshot rate. | Tens of kbit/s; design budget 20 kbit/s; 25-byte tag record plus snapshots, 0.24 kbit/s mean in simulation. | hardware owner |
+| 20 | O3 | How must the survivor map be delivered to the judges (format, moment, from the GCS screen)? | Our output format must match. | The GCS shows tags live; no file format assumed. | organisers |
+| 21 | D5 | Detection rate (Hz) and latency on the Pi? | Sizes the pose buffer and staleness limits. | Unknown; staleness limit 1 s (`l2.max_detection_age_s`). | detection teammate |
+| 22 | C2 | How should the simulation feed the library: direct Python calls per frame, recorded files, or ROS 2 topics? | Decides Python API first or ROS 2 nodes first. | Direct Python calls (`process_pose`, `process_frame`, `finalize`, see `harness.md`), ROS 2 later. | controls team |
+| 23 | C1 | Which simulator (Gazebo version, Isaac, AirSim, custom)? Does it render RGB-D and give ground-truth survivor positions? | I want an end-to-end test with known truth before hardware. | Our synthetic harness; theirs plugs in later. | controls team |
+| 24 | C3 | Can the simulator give intrinsics, camera mount pose and timestamped drone pose on one clock? | Same inputs the real system needs. | Yes, all on simulator time. | controls team |
+| 25 | H1 | OS image and Python version on the Pi 5 (Raspberry Pi OS Bookworm? Ubuntu 24.04?), numpy version? | Library compatibility; the code is untested on 3.10/3.11 and on the Pi. | Python 3.10+ with numpy. | hardware owner |
+| 26 | H2 | ROS 2 distribution (Humble, Jazzy ...), native or Docker? | Decides the wrapper package and message types. | Unknown; the core has no ROS dependency, nothing is blocked. | hardware owner |

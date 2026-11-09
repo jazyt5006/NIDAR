@@ -205,6 +205,22 @@ class TrackObs:
     bearing_deg: float  # survivor -> camera, map frame
     stamp_ns: int
     nis: Optional[float] = None  # normalised innovation when it was associated
+    # Cached once per observation (substep 3.4): R^-1 as (a, b, c, d) = [[a, b], [c, d]] and R^-1 xy.
+    rinv: Optional[Tuple[float, float, float, float]] = field(default=None, repr=False)
+    rinv_xy: Optional[Tuple[float, float]] = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.rinv is None:
+            self.rinv = _inv2(float(self.R[0, 0]), float(self.R[0, 1]), float(self.R[1, 0]), float(self.R[1, 1]))
+            a, b, c, d = self.rinv
+            x, y = float(self.xy[0]), float(self.xy[1])
+            self.rinv_xy = (a * x + b * y, c * x + d * y)
+
+
+def _dist(a: np.ndarray, b: np.ndarray) -> float:
+    """Euclidean distance of two 2-vectors (what np.linalg.norm(a - b) returns, without its call overhead)."""
+    dx, dy = float(a[0]) - float(b[0]), float(a[1]) - float(b[1])
+    return math.sqrt(dx * dx + dy * dy)
 
 
 def _bias(ray: np.ndarray, sigma: float) -> np.ndarray:
@@ -230,23 +246,55 @@ def view_bins(items: Sequence[TrackObs], bin_deg: float, max_gap_s: float) -> Di
     return out
 
 
+def _inv2(a: float, b: float, c: float, d: float) -> Tuple[float, float, float, float]:
+    """Inverse of [[a, b], [c, d]] as (a', b', c', d'). Falls back to numpy (which raises LinAlgError) if singular."""
+    det = a * d - b * c
+    if det == 0.0 or not math.isfinite(det):
+        inv = np.linalg.inv(np.array([[a, b], [c, d]]))
+        return float(inv[0, 0]), float(inv[0, 1]), float(inv[1, 0]), float(inv[1, 1])
+    return d / det, -b / det, -c / det, a / det
+
+
 def fuse(items: Sequence[TrackObs], p: Layer4Params) -> Tuple[np.ndarray, np.ndarray, int]:
-    """Two-stage fusion (module docstring). Returns (x, P, number of view bins)."""
+    """Two-stage fusion (module docstring). Returns (x, P, number of view bins). Scalar 2x2 arithmetic on the
+    per-observation cached R^-1 (substep 3.4); same formulas and summation order as the original numpy version."""
     bins = view_bins(items, p.view_bin_deg, p.view_bin_max_gap_s)
-    info, info_vec = np.zeros((2, 2)), np.zeros(2)
+    s2 = p.ray_sigma_m * p.ray_sigma_m
+    i00 = i01 = i10 = i11 = 0.0
+    v0 = v1 = 0.0
     for members in bins.values():
-        r_inv = [np.linalg.inv(m.R) for m in members]
-        c_avg = np.linalg.inv(sum(r_inv))
-        z_b = c_avg @ sum(ri @ m.xy for ri, m in zip(r_inv, members))
+        sa = sb = sc = sd = 0.0
+        sv0 = sv1 = 0.0
+        rx = ry = 0.0
+        for m in members:
+            a, b, c, d = m.rinv
+            sa += a
+            sb += b
+            sc += c
+            sd += d
+            sv0 += m.rinv_xy[0]
+            sv1 += m.rinv_xy[1]
+            rx += float(m.ray[0])
+            ry += float(m.ray[1])
+        ca, cb, cc, cd = _inv2(sa, sb, sc, sd)
+        z0, z1 = ca * sv0 + cb * sv1, cc * sv0 + cd * sv1
         n = len(members)
-        c_noise = c_avg * n / min(n, p.max_eff_obs_per_bin)  # correlated frames: floor at R / max_eff
-        ray = np.mean([m.ray for m in members], axis=0)
-        ray = ray / max(np.linalg.norm(ray), 1e-12)
-        c_bin_inv = np.linalg.inv(c_noise + _bias(ray, p.ray_sigma_m))
-        info += c_bin_inv
-        info_vec += c_bin_inv @ z_b
-    cov = np.linalg.inv(info)
-    return cov @ info_vec, 0.5 * (cov + cov.T), len(bins)
+        k = min(n, p.max_eff_obs_per_bin)
+        na, nb, nc, nd = ca * n / k, cb * n / k, cc * n / k, cd * n / k  # correlated frames: floor at R / max_eff
+        rx, ry = rx / n, ry / n
+        nr = max(math.sqrt(rx * rx + ry * ry), 1e-12)
+        rx, ry = rx / nr, ry / nr
+        ba, bb, bc, bd = _inv2(na + s2 * (rx * rx), nb + s2 * (rx * ry), nc + s2 * (ry * rx), nd + s2 * (ry * ry))
+        i00 += ba
+        i01 += bb
+        i10 += bc
+        i11 += bd
+        v0 += ba * z0 + bb * z1
+        v1 += bc * z0 + bd * z1
+    ca, cb, cc, cd = _inv2(i00, i01, i10, i11)
+    x = np.array([ca * v0 + cb * v1, cc * v0 + cd * v1])
+    cov = np.array([[ca, 0.5 * (cb + cc)], [0.5 * (cb + cc), cd]])
+    return x, cov, len(bins)
 
 
 @dataclass(eq=False)
@@ -259,7 +307,10 @@ class Track:
     P: Optional[np.ndarray] = None
     z_m: float = 0.0
     n_bins: int = 0
-    probs: Optional[CellProbabilities] = None
+    _probs: Optional[CellProbabilities] = field(default=None, repr=False)
+    _probs_src: Optional[tuple] = field(default=None, repr=False)  # (registration, x, P, max_cells) until computed
+    _stamps: Optional[Set[int]] = field(default=None, repr=False)
+    _stamps_n: int = field(default=-1, repr=False)
     first_seen_ns: int = 0
     last_seen_ns: int = 0
     n_frames: int = 0  # observations fused over the track's life (evicted ones included)
@@ -275,8 +326,27 @@ class Track:
     warnings: List[FailureReason] = field(default_factory=list)
     history: List[Tuple[int, str, str]] = field(default_factory=list)  # (stamp_ns, event, detail)
 
+    @property
+    def probs(self) -> Optional[CellProbabilities]:
+        """Cell probabilities of the fused estimate, computed on first access (substep 3.4: most updates never need
+        them) from the registration, x and P stored by Layer4._refuse."""
+        if self._probs is None and self._probs_src is not None:
+            reg, x, cov, max_cells = self._probs_src
+            self._probs, self._probs_src = cell_probabilities(reg, x, cov, max_cells), None
+        return self._probs
+
+    @probs.setter
+    def probs(self, value: Optional[CellProbabilities]) -> None:
+        self._probs, self._probs_src = value, None
+
+    def invalidate_stamps(self) -> None:
+        self._stamps = None
+
     def stamps(self) -> Set[int]:
-        return {it.stamp_ns for it in self.items}
+        """Capture stamps of the held observations (cached; the returned set must not be modified)."""
+        if self._stamps is None or self._stamps_n != len(self.items):
+            self._stamps, self._stamps_n = {it.stamp_ns for it in self.items}, len(self.items)
+        return self._stamps
 
     def top(self) -> Tuple[Optional[Cell], float]:
         if self.probs is None or not self.probs.cells:
@@ -395,7 +465,7 @@ class Layer4:
         cost = np.full((len(items), nt), BIG)
         for i, it in enumerate(items):
             for j, t in enumerate(tracks):
-                if stamp in t.stamps() or np.linalg.norm(it.xy - t.x) > self.p.max_assoc_dist_m:
+                if stamp in t.stamps() or _dist(it.xy, t.x) > self.p.max_assoc_dist_m:
                     continue
                 v = self._innovation(t, it)
                 if v <= self.p.gate_chi2:
@@ -508,6 +578,7 @@ class Layer4:
         if tid is not None:
             t.last_tracking_id = tid
         t.items.append(it)
+        t.invalidate_stamps()
         t.n_frames += 1
         t.first_seen_ns = min(t.first_seen_ns, it.stamp_ns)
         t.last_seen_ns = max(t.last_seen_ns, it.stamp_ns)
@@ -521,6 +592,7 @@ class Layer4:
         biggest = max(bins.values(), key=len)
         victim = min(biggest, key=lambda it: it.stamp_ns)
         t.items.remove(victim)
+        t.invalidate_stamps()
         t.warn(FailureReason.CAPACITY_EXCEEDED)
         t.history.append((self.now_ns, "observation_evicted", f"obs {victim.obs.observation_id}"))
         self.events.append((self.now_ns, FailureReason.CAPACITY_EXCEEDED.value, t.track_id, "observation"))
@@ -528,7 +600,7 @@ class Layer4:
     def _refuse(self, t: Track) -> None:
         t.x, t.P, t.n_bins = fuse(t.items, self.p)
         t.z_m = float(np.median([np.asarray(it.obs.p_map_m)[2] for it in t.items]))
-        t.probs = cell_probabilities(self.reg, t.x, t.P, self.p.max_candidate_cells)
+        t._probs, t._probs_src = None, (self.reg, t.x, t.P, self.p.max_candidate_cells)  # lazy, see Track.probs
 
     def _flag_proximity(self, tracks: List[Track], stamp: int) -> None:
         for a in range(len(tracks)):
@@ -551,10 +623,10 @@ class Layer4:
                 for b in range(a + 1, len(ts)):
                     ta, tb = ts[a], ts[b]
                     d = ta.x - tb.x
+                    if _dist(ta.x, tb.x) > self.p.max_assoc_dist_m:  # pure checks: order does not change the result
+                        continue
                     shared = ta.stamps() & tb.stamps()
                     if shared and not self._shared_are_near_duplicates(ta, tb, shared):
-                        continue
-                    if np.linalg.norm(d) > self.p.max_assoc_dist_m:
                         continue
                     if float(d @ np.linalg.solve(ta.P + tb.P, d)) > self.p.merge_gate_chi2:
                         continue
@@ -598,6 +670,7 @@ class Layer4:
 
     def _add_merged(self, t: Track, it: TrackObs) -> None:
         t.items.append(it)
+        t.invalidate_stamps()
         t.n_frames += 1
         t.first_seen_ns = min(t.first_seen_ns, it.stamp_ns)
         t.last_seen_ns = max(t.last_seen_ns, it.stamp_ns)
@@ -628,10 +701,11 @@ class Layer4:
         return None
 
     def confirmable(self, t: Track) -> bool:
+        if not (t.n_frames >= self.p.confirm_min_obs and t.n_bins >= self.p.confirm_min_view_bins
+                and (t.last_seen_ns - t.first_seen_ns) >= self.p.confirm_min_span_s * NS_PER_S):
+            return False  # cheap criteria first: the cell probabilities are only computed when they matter
         cell, prob = t.top()
-        return (t.n_frames >= self.p.confirm_min_obs and t.n_bins >= self.p.confirm_min_view_bins
-                and (t.last_seen_ns - t.first_seen_ns) >= self.p.confirm_min_span_s * NS_PER_S
-                and cell is not None and prob >= self.p.confirm_prob and not self.blocked(t))
+        return cell is not None and prob >= self.p.confirm_prob and not self.blocked(t)
 
     def _update_status(self, t: Track) -> None:
         reason = self.unreliable_reason(t)

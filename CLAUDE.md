@@ -15,17 +15,22 @@ detection + depth -> 3D position -> SLAM map frame -> official NIDAR grid cell -
   rules 8.20-8.31 on pp.12-13, AirMouse scoring p.19, penalties p.20) and `docs/reference/Mission Brief - NIDAR AirMouse.pdf`.
 - Design: `docs/design/architecture.md`, `docs/design/conventions.md` (frames, time, units), `docs/design/teammate_questions.md`.
 - Module map (purpose, public API, invariants, import bans, test files, commands): `docs/design/CODEMAP.md`.
-  Library: `types`, `config`, `geometry` (L1), `transforms` (L2), `grid` (L3), `tracking` (L4), `footprint`,
-  `calibration`, `output` (telemetry codec), `pipeline`. Harness side: `sim`, `scenarios`, `harness`, `baseline`
-  (NaivePipeline control, never reuse), `sim_pipelines`, `diagnostics`, `experiments` (3.1b), `experiments_calib`
-  (3.1c). Harness results are SIMULATION tested only. Test config: `configs/example_synthetic.json` (TEST VALUES ONLY).
+  Library: `types`, `config`, `geometry` (L1), `transforms` (L2), `grid` (L3), `tracking` (L4), `corrections` +
+  `output` + `Layer5Pipeline` in `pipeline` (L5), `footprint`, `calibration`. Harness side: `sim`, `scenarios`, `harness`,
+  `baseline` (NaivePipeline control, never reuse), `sim_pipelines`, `diagnostics`, `experiments*` (3.1b, 3.1c, 3.2, 3.3a,
+  3.3b). Harness results are SIMULATION tested only. Test config: `configs/example_synthetic.json` (TEST VALUES ONLY).
+- `configs/frozen_synthetic_v1.json`: every parameter with value, source, evidence level, plus the unfrozen unknowns
+  (end of step 3). Documentation of the freeze, not an override file; `tests/test_frozen_config.py` checks it.
 - `l1.body_depth_offset_m` stays 0.0 until measured on real bodies (Step 5); never set it from simulator results.
 - Pipeline order: capture-time pose -> floor plane -> Layer 1 -> camera-to-map -> footprint -> Layer 3 -> Layer 4.
   Floor removal (`l1.floor_removal`, needs `map.floor_z_m`) and footprint refinement (`l1b.footprint_refinement`) are
   OFF by default: both failed their pre-set decision rules (3.1b).
 - Layer 4 ray sigma = sqrt(`l4.ray_bias_sigma_m`^2 + `l1.body_depth_offset_sigma_m`^2). End-of-mission policy
   (`final_tags`) stays configurable until O2 is answered; `expected_value` threshold P/(40+P), P =
-  `score.wrong_tag_penalty_assumed` (unset = 0.5 + note). 3.1c calibration sweep FAILED its rule; redo in Step 5.
+  `score.wrong_tag_penalty_assumed` (unset = 0.5 + note). INTERIM simulation choice (3.3b R-C): `expected_value` with
+  threshold 0.667; not a default. 3.1c calibration sweep FAILED its rule; redo in Step 5.
+- Layer 4 drops the lower-confidence box of two same-frame boxes closer than `l4.min_separate_survivor_distance_m` (0.5,
+  3.3a); costs 4.0 points/run at P = 40 in 3 scenarios (3.3b R-A, accepted). Layer 5 full recompute (R3) is too slow.
 - Five-layer architecture is FIXED: (1) robust survivor geometry, (2) time-aligned coordinate transformation, (3) NIDAR grid
   registration, (4) temporal consistency and uncertainty, (5) correction handling and live map output.
   Changing it needs a written technical reason and my approval.
@@ -119,6 +124,7 @@ Verified on dev machine (Windows, Git Bash, Python 3.13.5, numpy 2.4.2, pytest 9
 - `PYTHONPATH=src python -m survivor_tagging.harness`  (naive baseline, all scenarios x 5 seeds, ~17 s on dev laptop)
 - `PYTHONPATH=src python -m survivor_tagging.experiments`  (substep 3.1b tables, ~215 s on dev laptop)
 - `PYTHONPATH=src python -m survivor_tagging.experiments_calib`  (substep 3.1c, ~800 s, 11 processes)
+- `PYTHONPATH=src python -m survivor_tagging.experiments_33b run|report`  (substep 3.3b, ~17 min then seconds, cached JSON)
 Not verified on Python 3.10/3.11 or on the Pi.
 
 ## Frames, topics, messages
@@ -126,18 +132,15 @@ Core library uses no topics. Frames: camera optical frame, body frame, SLAM map 
 architecture.md). Proposed ROS 2 boundary in architecture.md section g; none of it exists yet.
 
 ## Open questions (full list with owners and default assumptions: docs/design/teammate_questions.md)
-1. Official grid origin, axes, indexing, entry cell, whether walls lie on grid lines (organisers).
-2. Are wrong or extra tags penalised? Affects the end-of-mission commit policy (organisers).
-3. Dummy appearance and posture. Will the detector recognise dummies? (detection)
-4. Do detections come from the D435i RGB stream or another camera? (detection)
-5. Is the pose full 3D or planar? Does SLAM expose corrected historical poses? (SLAM)
-6. Camera mounting extrinsics (hardware).
-7. Telemetry radio and its data rate (hardware).
-8. How will the controls simulation feed depth, pose and detections into this library? (controls)
-9. Pi OS, ROS 2 distro, RealSense driver status (hardware).
-10. O5: if a survivor lies across two grid cells, which point decides the cell? Default ASSUMPTION: the cell
-    containing the centre of the body (organisers).
-11. O6: how are two survivors in the same cell scored? Default ASSUMPTION: one tag per survivor (organisers).
+The table is ordered by impact; IDs are stable. Top items (default we use now in brackets):
+1. O1 grid origin, axes, indexing, entry cell, walls on lines (organisers; none, registration required).
+2. H4 camera extrinsics (hardware; none, required). 3. S1 pose full 3D or planar, altitude source (SLAM).
+4. D2 detections from the D435i RGB stream or another camera (detection; D435i). 5. S3 pose clock vs camera clock (SLAM).
+6. O2 wrong or extra tags penalised (organisers; unknown, interim `expected_value` 0.667 in simulation).
+7. O5 which point decides the cell of a body spanning two cells (organisers; body centre).
+8. O8 NEW: how close can survivors or dummies be placed (organisers; 0.5 m, simulation tested down to 0.30 m).
+9. O6 two survivors in one cell (organisers; one tag per survivor). 10. S4 corrected historical poses from SLAM (SLAM; none).
+Then D1/D3-D5, S2, S5, S6, O3, O4, H1-H3, H5, C1-C3: see the table.
 
 ## Candidate ideas (from design discussion; NOT requirements; do not implement without approval)
 - Grid registration from wall alignment: histogram wall coordinates modulo cell size for sub-cell offset and heading

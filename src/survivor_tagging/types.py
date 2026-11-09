@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum, IntFlag
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 
@@ -78,6 +78,10 @@ class FailureReason(str, Enum):
     CORRECTION_INVALID = "CORRECTION_INVALID"  # malformed correction / registration event
     CORRECTION_CONFLICT = "CORRECTION_CONFLICT"  # same revision received twice with different content
     CORRECTION_STALE = "CORRECTION_STALE"  # revision / version older than the retained history
+    # ROS-free adapters (substep 4.1a)
+    FRAME_MISMATCH = "FRAME_MISMATCH"  # message frame_id differs from the configured frame
+    TIMESTAMP_INVALID = "TIMESTAMP_INVALID"  # zero, negative, malformed or non-monotonic message stamp
+    IMAGE_FORMAT_INVALID = "IMAGE_FORMAT_INVALID"  # unsupported encoding, bad shape, stride or data length
 
 
 _R, _B, _D, _E = Severity.REJECT, Severity.BLOCK, Severity.DEGRADE, Severity.EVENT
@@ -125,6 +129,9 @@ FAILURE_SEVERITY: Dict[FailureReason, Severity] = {
     FailureReason.CORRECTION_INVALID: _R,
     FailureReason.CORRECTION_CONFLICT: _R,
     FailureReason.CORRECTION_STALE: _R,
+    FailureReason.FRAME_MISMATCH: _R,
+    FailureReason.TIMESTAMP_INVALID: _R,
+    FailureReason.IMAGE_FORMAT_INVALID: _R,
 }
 
 # Spec Part 10 "Failure" column text -> the code that handles it.
@@ -341,12 +348,26 @@ class SurvivorObservation:
     # Layer 3
     p_grid_m: Optional[np.ndarray] = None  # (2,)
     cell: Optional[Cell] = None
-    cell_probs: Dict[Cell, float] = field(default_factory=dict)
+    _cell_probs: Dict[Cell, float] = field(default_factory=dict, repr=False)
     registration_version: Optional[int] = None
     boundary_distance_m: Optional[float] = None
     # Diagnostics
     failure: Optional[FailureReason] = None
     warnings: List[FailureReason] = field(default_factory=list)
+    # Layer 3 may leave the cell probabilities to be computed on first access (substep 3.4): a zero-argument callable
+    # that holds copies of its inputs and returns the dict.
+    _cell_probs_thunk: Optional[Callable[[], Dict[Cell, float]]] = field(default=None, repr=False)
+
+    @property
+    def cell_probs(self) -> Dict[Cell, float]:
+        """Probability of each candidate cell (Layer 3), computed on first access if it was deferred."""
+        if self._cell_probs_thunk is not None:
+            self._cell_probs, self._cell_probs_thunk = self._cell_probs_thunk(), None
+        return self._cell_probs
+
+    @cell_probs.setter
+    def cell_probs(self, value: Dict[Cell, float]) -> None:
+        self._cell_probs, self._cell_probs_thunk = value, None
 
 
 @dataclass(eq=False)

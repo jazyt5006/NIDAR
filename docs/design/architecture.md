@@ -1,6 +1,9 @@
 # Survivor Tagging Core Library: Architecture
 
-Status: design only, no algorithm code exists. Version 0.0.1 (substep 1.1, 2026-11-08).
+Status: Layers 1-5 are implemented (unit and simulation tested only; no recorded, Gazebo or hardware evidence). The sections
+(a) to (g) below are the original design (substep 1.1) with in-place corrections; the sections "... as implemented" at the
+end describe what the code does and where it deviates. Last updated: end of step 3 (substep 3.3b, 2026-11-09). The complete
+list of parameter values with source and evidence level is `configs/frozen_synthetic_v1.json`.
 Source of requirements: `survivor_tagging_master_spec.md` (Parts referenced as "spec N.M").
 Labels: **ASSUMPTION** = chosen by us, not from hardware, rules or measurement. **needs measurement** = must come from
 calibration, the device/driver, a teammate, the organisers or an experiment before it is trusted.
@@ -25,8 +28,11 @@ src/survivor_tagging/
   grid.py          Layer 3  GridRegistration (T_grid_map, versioned), map->grid, cell index, boundary proximity,
                             out-of-grid, per-cell probability.
   tracking.py      Layer 4  SurvivorTrack store, association, decorrelated fusion, status state machine, duplicates.
-  output.py        Layer 5  observation store for re-derivation, correction handling (adapter interface only),
-                            full Tag output, compact telemetry encode/decode, snapshot scheduling.
+  output.py        Layer 5  compact telemetry codec (25-byte record, snapshot), live output (PublishedTag, TelemetryScheduler).
+  corrections.py   Layer 5  observation store for re-derivation, correction history and fold, TagBook (survivor ids).
+  pipeline.py      wiring: Layer123Pipeline, Layer1234Pipeline, Layer5Pipeline (as implemented; the original plan had no
+                            pipeline module).
+  footprint.py, calibration.py   optional footprint refinement (default off) and reliability/ECE metrics.
   harness.py       Offline driver: feeds (detections, depth, intrinsics, poses, corrections) into the pipeline in
                    timestamp order. Entry point for unit/simulation tests and for the controls team's simulator.
                    Later reused by the ROS 2 wrapper.
@@ -220,16 +226,20 @@ until validated experimentally (spec 8.6: thresholds are experimentally validate
 | l4.track_history_max | count | observations kept per track | ASSUMPTION: 50 |
 | l4.max_tracks | count | tracks kept | ASSUMPTION: 64 |
 
-### Layer 5: corrections and output
+### Layer 5: corrections and output (updated in 3.2; values and evidence levels: `configs/frozen_synthetic_v1.json`)
 | Name | Unit | Meaning | Source |
 |---|---|---|---|
-| l5.correction_source | enum | `none`, `pose_revision_stream`, `keyframe_updates` | needs measurement (Q S4) |
+| l5.correction_source | enum | `none`, `history`, `frame_correction` (the old `pose_revision_stream`/`keyframe_updates` were never used) | needs measurement (Q S4) |
 | l5.observation_store_max | count | bounded re-derivation store | ASSUMPTION: 2000 |
-| l5.telemetry_snapshot_period_s | s | full snapshot cadence | ASSUMPTION: 5 |
-| l5.telemetry_max_tags_per_snapshot | count | | ASSUMPTION: 32 |
-| l5.telemetry_send_candidates | bool | include CANDIDATE tags on the radio | ASSUMPTION: false |
-| l5.telemetry_link_budget_bps | bit/s | budget we design against | ASSUMPTION: 20000 ("tens of kbps", Q H5) |
-| l5.end_of_mission_commit_policy | enum | `confirmed_only`, `confirmed_plus_provisional_top1` | needs measurement (rules, Q O2) |
+| l5.frame_correction_cov_inflation, l5.uncorrected_cov_inflation | factor | variance inflation for a frame jump / observations without a corrected pose | ASSUMPTION: 4.0 |
+| l5.correction_history_max, l5.tag_history_max, l5.removed_tags_max | count | bounds | ASSUMPTION: 8, 8, 64 |
+| l5.missing_correction_timeout_s | s | a pose_revision bump without an event for this long adds a "missing correction" marker | ASSUMPTION: 2.0 |
+| l5.recompute_mode | enum | `full` (exact, default) or `affected_tracks` (approximate) | ASSUMPTION: full |
+| l5.telemetry_snapshot_period_s, l5.telemetry_update_min_interval_s | s | snapshot cadence / minimum interval between updates of one tag | ASSUMPTION: 5, 1 |
+| l5.telemetry_max_tags_per_snapshot, l5.telemetry_send_candidates, l5.telemetry_link_budget_bps, l5.telemetry_log_max | - | snapshot size, candidates on the radio, design link budget, diagnostic log bound | ASSUMPTION: 32, false, 20000 (Q H5), 4096 |
+| l5.end_of_mission_commit_policy | enum | `confirmed_only`, `confirmed_plus_provisional_top1`, `expected_value` | unset (rules, Q O2); interim simulation choice in "Substep 3.3b" |
+| l5.commit_min_obs | count | observations a track needs for the `expected_value` policy | ASSUMPTION: 3 |
+| score.correct_tag_points / score.wrong_tag_penalty_assumed | points | 40 (rulebook p.19) / ASSUMED penalty for evaluation, unset | rulebook / unset (Q O2) |
 
 ---
 
@@ -264,6 +274,9 @@ DEPTH_FRAME_MISMATCH (REJECT: bbox camera ≠ depth camera without calibrated ma
 POSE_INVALID (BLOCK), POSE_GAP_TOO_LARGE (BLOCK), GROUND_REF_UNAVAILABLE (DEGRADE), OBSERVATION_OUTLIER (REJECT),
 TRACK_INCONSISTENT (DEGRADE → UNRELIABLE), CORRECTION_SOURCE_UNAVAILABLE (DEGRADE: limitation logged once),
 CONFIG_MISSING (BLOCK), CAPACITY_EXCEEDED (EVENT: bounded store evicted oldest).
+Added in 3.1b-3.3a: FLOOR_UNKNOWN, EXTENDED_CLUSTER (Layer 1 warnings); POSE_NOT_CORRECTED, OBSERVATION_NOT_REDERIVABLE,
+FRAME_CORRECTION_APPLIED (DEGRADE, Layer 5); CORRECTION_INVALID, CORRECTION_CONFLICT, CORRECTION_STALE (REJECT, Layer 5
+events); NEAR_DUPLICATE_OBSERVATION (EVENT, Layer 4, cleared by a Layer 5 re-derivation). Severities: `types.FAILURE_SEVERITY`.
 
 ---
 
@@ -499,7 +512,9 @@ Per frame batch (observations with one capture stamp, already through Layers 1-3
 6. **Merges**: two tracks never observed in the same frame whose estimates are consistent
    (`l4.merge_gate_mahalanobis`) are merged; the higher status survives (ties: older); event TRACK_DUPLICATE_MERGED
    and history on both. Tracks in one frame closer than `l4.min_separate_survivor_distance_m` are flagged
-   (ASSOCIATION_AMBIGUOUS, history "too_close_same_frame"), never merged. A new track created from an observation
+   (ASSOCIATION_AMBIGUOUS, history "too_close_same_frame"), never merged. Since 3.3a two observations of ONE frame
+   closer than that distance that fit the same track are one body seen twice: the better one is kept and the other is
+   dropped (NEAR_DUPLICATE_OBSERVATION), see "Substep 3.3a" below. A new track created from an observation
    whose detector id belongs to an existing track logs "split_from" / "split_to".
 7. **False positives**: never-confirmed tracks with fewer than `l4.confirm_min_obs` frames are dropped after
    `l4.candidate_timeout_s` without observations (bounded `dropped` log of 100).
@@ -507,8 +522,9 @@ Per frame batch (observations with one capture stamp, already through Layers 1-3
    observation; event CAPACITY_EXCEEDED) and `l4.track_history_max` observation references per track (evict the
    oldest of the most populated view bin; warning CAPACITY_EXCEEDED). References keep `pose_revision` for Layer 5.
 9. **Output**: `Tag` (status, confirmed or top cell, candidate cells with probabilities, sigma, revision, reasons,
-   confirmed time, cell changes); `final_tags(policy)` with `confirmed_only` or `confirmed_plus_provisional_top1`
-   (no default claimed: depends on O2).
+   confirmed time, cell changes); `final_tags(policy, threshold)` with `confirmed_only`,
+   `confirmed_plus_provisional_top1` or `expected_value` (3.1c). No default policy is claimed: it depends on O2; the
+   interim simulation choice is in "Substep 3.3b".
 
 ### Status transitions
 | From \ To | CANDIDATE | PROVISIONAL | CONFIRMED | UPDATED | UNRELIABLE |
@@ -618,3 +634,107 @@ well as confirmed_only for P <= 40 in all four offset/model cases, but the formu
 thresholds only at P = 0 and P = 80 (and P = 60 in two cases); for P = 20-40 a higher threshold (0.5-0.67) was better,
 consistent with the measured over-confidence. confirm_prob stays 0.9 (pre-set rule: 0.7 scores more whenever the
 offset is right, but less at offset 0.0 and P = 80).
+
+---
+
+## Layer 5 as implemented (substep 3.2, `corrections.py`, `output.py`, `pipeline.Layer5Pipeline`)
+
+Status: unit tested and simulation tested on synthetic data only. Spec: Part 9 and 12.5. Details and numbers:
+`docs/reports/3.2.md`.
+
+- **Pose-independent store.** Every accepted observation is stored (`StoredObservation`: camera-frame point and
+  covariance, capture stamp, the base pose lookup used, the Layer 4 batch id). Bounded by `l5.observation_store_max`.
+- **Corrections.** One interface, `PoseCorrection`, with two sources chosen by `l5.correction_source`: `history`
+  (corrected historical poses for a time range) and `frame_correction` (one map-frame jump applied over the window
+  [previous correction stamp, event stamp)). Events are folded in revision order over the stored base poses, so arrival
+  order does not matter. Observations without a corrected pose get POSE_NOT_CORRECTED and inflated covariance; a bracket
+  of mixed revisions counts as uncorrected (`PoseLookup.min_revision`). A pose_revision bump with no event for
+  `l5.missing_correction_timeout_s` flags older observations; the real event replaces the marker.
+- **Recompute = re-derive, never patch.** A correction or a registration update re-derives Layer 2 (effective
+  capture-time pose) and Layer 3 (current registration) for every stored observation and replays Layer 4 from scratch
+  in the ORIGINAL batches (replaying per capture stamp would not be exact: Layer 4 timeouts run once per update).
+  Result equals an offline run on the corrected poses (R1: 0.0 m). Observations evicted from the store but still held by
+  a track are replayed with their old position and inflated covariance (OBSERVATION_NOT_REDERIVABLE).
+- **Survivor identity.** `TagBook` assigns a survivor id when a track is first published (status above CANDIDATE),
+  never reuses it, and after a rebuild matches tracks by shared observation ids. A merge announces the losing id once
+  as REMOVED. A confirmed-cell change publishes UPDATED with tag revision + 1. Ids and revisions are sent as their low
+  byte on the radio (u8 fields): more than 256 published survivors would collide.
+- **Live output.** `output.py` keeps the 25-byte record and 12-byte snapshot header unchanged; `PublishedTag` and
+  `TelemetryScheduler` (snapshot every `l5.telemetry_snapshot_period_s` and on map/registration revision changes,
+  per-tag rate limit) were appended. Simulation: mean 243 bit/s, worst steady case 2.5 kbit/s against the ASSUMED 20 kbit/s.
+- **Deviations from the original plan:** the plan put the store in `output.py` and listed `pose_revision_stream` /
+  `keyframe_updates` as sources; both were replaced as above. No persistence (a restart starts clean, tested).
+  `l5.recompute_mode = full` is exact but slow (R3 FAIL below); `affected_tracks` is an approximation and stays optional.
+
+## Substep 3.3a: near-duplicate observations (Layer 4) and honest pose covariance (simulator)
+
+Status: unit tested and simulation tested only. Report: `docs/reports/3.3a.md`.
+- Two observations of one frame closer than `l4.min_separate_survivor_distance_m` that fit the same track (or no
+  track) are one body seen twice: the higher-confidence one is kept, the other gets NEAR_DUPLICATE_OBSERVATION (EVENT)
+  and does not count as ambiguity. `_merge` may merge two tracks of one body whose shared frames are all near-duplicates,
+  and runs before the proximity flag. An unambiguous assignment resets the ambiguity streak of every track it gates with
+  (this removes the 3.2 deadlock where two tracks of one body made every later observation ambiguous).
+- Setting the distance to 0 switches the drop off (the 3.2 behaviour; 3.3b verified this against the saved 3.3a "before" rows).
+- Simulator: `double_detection` scenario (`DetectorSim.dup_prob`), and live/corrected poses after a closure now carry a
+  covariance that matches their drawn error (mean normalised error squared 1.86-2.19, expected 2.0).
+- Accepted limitation: a real second person within 0.5 m whose box fits the same track loses that frame's observation;
+  a detector false positive within 0.5 m of a real person is dropped (this caused A3 FAIL; quantified in 3.3b R-A).
+
+## Substep 3.3b: end-to-end evaluation, interim final-tag policy, parameter freeze
+
+Status: simulation tested on synthetic data only (5 seeds; body offsets 0.0 and 0.2 m; true body model "fixed" unless
+stated). Report: `docs/reports/3.3b.md`; full tables `docs/reports/3.3b_eval.txt`; raw rows `3.3b_cache_*.json`.
+Scoring in all points tables is ASSUMED (O2): +40 per correct committed tag, -P per other committed tag.
+
+- **R-A (A3 quantification, no decision).** Pooled over revisit_after_gap, opposite_views_boundary and
+  thin_person_in_front_of_wall (30 runs): net change at P = 40 is **-4.00 points per run** (13.33 -> 9.33), at P = 0
+  0.00. FLAGGED (threshold -1.0). It is 3 of 30 runs: a detector false positive near the person used to start a second
+  track that survived as a tag; the person is now found but tagged in the neighbouring cell (front-surface bias, offset
+  0.0 uncorrected). The change was accepted before the run; this is its cost.
+- **R-B (merge distance).** Family `two_close_survivors` (8 pair types, centres 0.30-0.60 m apart, adjacent and same
+  cell, standing/sitting). Missed rate at min_sep 0 / 0.3 / 0.4 / 0.5: 0.013 / 0 / 0 / 0 (offset 0.0), 0 at all values
+  (offset 0.2). Largest value within +0.02: **0.5 = current default, unchanged**. The test barely discriminates (one miss
+  in 80 survivors per cell); it does show that the 0.5 m drop did not lose real neighbours 0.30 m apart in simulation.
+  Pairs closer than 0.30 m were not tested (the boxes would overlap).
+- **R-C (INTERIM final-tag policy, per-P maximin).** Layers 1-5, 34 scenarios x 5 seeds, the four 3.1c calibration
+  combinations, P in {0,20,40,60,80}. Worst-case points per run: confirmed_only 30.6, expected_value 0.5: 31.5, 0.6:
+  35.1, **0.667: 36.9 (chosen)**. The maximin is dominated by P = 80; at P = 0 it gives up 3-5 points per run against
+  threshold 0.5. Not applied as a default: `l5.end_of_mission_commit_policy` stays unset until O2 is answered.
+- **Calibration per scenario (A).** At offset 0.2 (fixed) the 0.6-0.7 probability bin is over-confident (predicted 0.645,
+  observed 0.511) almost only because of cell_boundary (80 of 368 samples, 0 correct; 56 % of the over-confidence mass);
+  without it the bin is calibrated (0.648 vs 0.653) and pooled ECE falls 0.073 -> 0.052. At offset 0.0 the bin is
+  calibrated pooled (0.649 vs 0.640); the large errors are in the 0.8-1.0 bins (uncorrected 0.25 m bias, e.g.
+  cell_boundary ECE 0.87, latency_fast_yaw 0.48). Calibration on recorded data (Step 5) is still required.
+- **Ablation (pooled, 170 runs per row, points at P = 40).** naive -32.0 (it commits every tag, including 0.81
+  duplicates per run), Layer 1 -29.4 / -23.3 (offset 0.0 / 0.2), Layers 1-3 -31.3 / -24.2, Layers 1-4 25.9 / 37.7,
+  Layers 1-5 28.5 / 40.9 under the interim policy. At P = 0 the naive pipelines score as much (41-45) as Layers 1-4
+  (36-42) because they commit everything. Layers 1-5 vs 1-4 differ only in the correction scenarios (loop_closure
+  duplicates 1.00 -> 0.00).
+- **Freeze.** `configs/frozen_synthetic_v1.json` lists all 116 registry parameters (81 with values, 35 unset) with
+  source and evidence level, the simulation-only constants, the interim choice and the unfrozen unknowns.
+
+## Decision rules and results, substeps 3.1b to 3.3b (all simulation evidence)
+
+| step | rule (as pre-registered) | result | consequence |
+|---|---|---|---|
+| 3.1b | floor removal default on iff tilt_45 acceptance rises, wrong-cell rate does not rise, p90 not worse than 0.02 m, at both offsets | FAIL (prone wrong-cell +0.059, p90 +0.025 m) | `l1.floor_removal` OFF |
+| 3.1b | footprint refinement default on iff prone h-median < 0.30 m, prone correct CONFIRMED > 0, p90 not worse | FAIL (0.329 m, 0 confirmed) | `l1b.footprint_refinement` OFF |
+| 3.1c | a (floor, offset sigma, obs model) setting with ECE(p >= 0.5) <= 0.05 and no bin >= 20 samples over-confident by > 0.10 in all rule combinations | FAIL (no setting; best held-out ECE 0.04-0.07, over-confidence up to +0.21) | defaults unchanged, redo on recorded data |
+| 3.1c | change `l4.confirm_prob` iff an alternative scores more at every P > 0, both offsets, both models | keep 0.9 | unchanged |
+| 3.2 R1 | tags after a correction equal an offline run on the corrected poses | PASS (35/35, 0.0 m) | exact recompute |
+| 3.2 R2 | loop_closure duplicates <= 0.1/run and pre-closure error <= post + 0.03 m | PASS (0.00; 0.253 vs 0.281) | - |
+| 3.2 R3 | full recompute at max store <= 250 ms | FAIL (12.8 s; incremental 10.3 s whole history, 0.52 s for a 4 s window) | `full` stays default; speed-up open |
+| 3.3a A1 | double_detection >= 0.8 correct; real-neighbour scenarios within +-0.02 | PASS (1.00; worst 0.000) | - |
+| 3.3a A2 | sim pose NIS in [1, 3]; repeated_corrections duplicates <= 0.2 | PASS (1.86-2.19; 0.0) | - |
+| 3.3a A3 | every number outside the targeted scenarios unchanged | FAIL (46 of 1040 numbers, 3 scenarios) | accepted by the user; costed in 3.3b R-A |
+| 3.3b R-A | flag if pooled net change at P = 40 below -1.0 point/run | **FLAGGED: -4.00** | reported, no code change |
+| 3.3b R-B | largest min_sep with missed rate <= off value + 0.02 at both offsets | 0.5 | default unchanged |
+| 3.3b R-C | candidate with the best worst-case points over 4 combos x 5 penalties | expected_value 0.667 (36.9) | INTERIM only |
+
+## Known gaps (at the end of step 3)
+- Nothing here is validated on recorded data, Gazebo or hardware. Probabilities are over-confident when the body-depth
+  offset is wrong; the offset stays 0.0 until measured.
+- R3: a full recompute after a loop closure is not affordable (seconds, laptop, simulation).
+- Layer 4 assumes static survivors; moving survivors would start new tracks.
+- The SLAM correction interface, pose type, grid definition, penalty rule and survivor spacing are open questions
+  (`teammate_questions.md`).

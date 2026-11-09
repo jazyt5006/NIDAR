@@ -1,0 +1,1057 @@
+{
+ "_note": "FROZEN FOR SYNTHETIC DATA, v1 (substep 3.3b, 2026-11-09). Annotated listing of EVERY parameter of survivor_tagging.config.default_config(): value, source and evidence level. Values are SIMULATION-tested only; nothing here is a hardware or competition value unless the source says rulebook. Unset entries (value null) are NOT guessed. This file documents the freeze; it is not an override file (load_config would reject the structure). tests/test_frozen_config.py checks it against the registry.",
+ "evidence_levels": [
+  "none",
+  "unit",
+  "simulation",
+  "Gazebo",
+  "recorded-data",
+  "hardware"
+ ],
+ "source_labels": [
+  "rulebook",
+  "ASSUMPTION",
+  "tuned on simulation",
+  "interim",
+  "unset: needs measurement or an answer"
+ ],
+ "parameters": {
+  "cam.intrinsics_source": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "cam.fx_px": {
+   "unit": "px",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": false
+  },
+  "cam.fy_px": {
+   "unit": "px",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": false
+  },
+  "cam.cx_px": {
+   "unit": "px",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": false
+  },
+  "cam.cy_px": {
+   "unit": "px",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": false
+  },
+  "cam.width_px": {
+   "unit": "px",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": false
+  },
+  "cam.height_px": {
+   "unit": "px",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": false
+  },
+  "cam.depth_scale_m_per_unit": {
+   "unit": "m/unit",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": false
+  },
+  "cam.depth_frame_id": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "cam.color_frame_id": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "cam.detections_use_depth_aligned_frame": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "extr.T_body_camera": {
+   "unit": "m, rad",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "extr.T_body_camera_cov": {
+   "unit": "m^2, rad^2",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "extr.version": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "clock.camera_to_pose_offset_ns": {
+   "unit": "ns",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "clock.offset_uncertainty_ns": {
+   "unit": "ns",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "l1.depth_min_m": {
+   "unit": "m",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "l1.depth_max_m": {
+   "unit": "m",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "l1.bbox_inset_fraction": {
+   "unit": "ratio",
+   "value": 0.15,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.min_bbox_size_px": {
+   "unit": "px",
+   "value": 8,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.sample_stride_px": {
+   "unit": "px",
+   "value": 2,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.min_valid_pixels": {
+   "unit": "count",
+   "value": 50,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.min_valid_fraction": {
+   "unit": "ratio",
+   "value": 0.2,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.cluster_gap_m": {
+   "unit": "m",
+   "value": 0.3,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.min_density_fraction": {
+   "unit": "ratio",
+   "value": 0.05,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 2.3b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.min_cluster_fraction": {
+   "unit": "ratio",
+   "value": 0.3,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.ambiguity_ratio": {
+   "unit": "ratio",
+   "value": 0.6,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.background_fraction_max": {
+   "unit": "ratio",
+   "value": 0.7,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.background_near_min_fraction": {
+   "unit": "ratio",
+   "value": 0.05,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 2.3 (geometry.select_cluster)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.depth_noise_model": {
+   "unit": "m",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "l1.point_method": {
+   "unit": "-",
+   "value": "median_pixel",
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substeps 2.3b, 2.4); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.cluster_rule": {
+   "unit": "-",
+   "value": "spatial",
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 2.3b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.occluder_edge_span_min": {
+   "unit": "ratio",
+   "value": 0.6,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 2.3b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.strip_rows_fraction_min": {
+   "unit": "ratio",
+   "value": 0.6,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 2.3b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.truncation_margin_px": {
+   "unit": "px",
+   "value": 1.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 2.3b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.truncated_cov_scale": {
+   "unit": "ratio",
+   "value": 4.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 2.3b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.floor_removal": {
+   "unit": "-",
+   "value": false,
+   "source": "tuned on simulation",
+   "evidence": "simulation",
+   "note": "3.1b decision rule FAILED -> OFF. Needs map.floor_z_m (venue measurement).",
+   "required": false
+  },
+  "l1.floor_margin_m": {
+   "unit": "m",
+   "value": 0.06,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.1b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.floor_margin_pose_sigma_k": {
+   "unit": "-",
+   "value": 2.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.1b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1b.footprint_refinement": {
+   "unit": "-",
+   "value": false,
+   "source": "tuned on simulation",
+   "evidence": "simulation",
+   "note": "3.1b decision rule FAILED -> OFF.",
+   "required": false
+  },
+  "l1b.method": {
+   "unit": "-",
+   "value": "midpoint",
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.1b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1b.max_points": {
+   "unit": "count",
+   "value": 300,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.1b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1b.extent_percentile_lo": {
+   "unit": "%",
+   "value": 5.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.1b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1b.extent_percentile_hi": {
+   "unit": "%",
+   "value": 95.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.1b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1b.extended_min_m": {
+   "unit": "m",
+   "value": 0.9,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.1b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1b.extended_axis_sigma_fraction": {
+   "unit": "ratio",
+   "value": 0.25,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.1b); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.ground_ref_method": {
+   "unit": "-",
+   "value": "none",
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l1.body_depth_offset_m": {
+   "unit": "m",
+   "value": 0.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Stays 0.0 until measured on real bodies (Step 5); never set from simulator results. With 0.0 the front-surface bias (about 0.25 m in simulation) is uncorrected, which causes most wrong-cell tags near cell edges.",
+   "required": false
+  },
+  "l1.body_depth_offset_sigma_m": {
+   "unit": "m",
+   "value": 0.1,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "3.1c calibration sweep FAILED its rule; value not tuned. Shrink only after the body-depth offset is measured on real bodies.",
+   "required": false
+  },
+  "map.floor_z_m": {
+   "unit": "m",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Venue measurement; only needed when l1.floor_removal is on.",
+   "required": false
+  },
+  "l2.pose_buffer_duration_s": {
+   "unit": "s",
+   "value": 10.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l2.pose_buffer_max_samples": {
+   "unit": "count",
+   "value": 2000,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "l2.max_interp_gap_s": {
+   "unit": "s",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "l2.allow_extrapolation_s": {
+   "unit": "s",
+   "value": 0.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l2.max_detection_age_s": {
+   "unit": "s",
+   "value": 1.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l2.max_pose_wait_s": {
+   "unit": "s",
+   "value": 0.5,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 2.4); not swept against a decision rule.",
+   "required": false
+  },
+  "l2.pending_queue_max": {
+   "unit": "count",
+   "value": 64,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "l2.max_rgb_depth_skew_s": {
+   "unit": "s",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "l2.pose_mode": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.cell_size_m": {
+   "unit": "m",
+   "value": 1.0,
+   "source": "rulebook",
+   "evidence": "rulebook",
+   "note": "rulebook p.19 (1 m x 1 m reference grid)",
+   "required": true
+  },
+  "grid.n_cells_x": {
+   "unit": "count",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.n_cells_y": {
+   "unit": "count",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.origin_in_map_m": {
+   "unit": "m",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.yaw_map_to_grid_rad": {
+   "unit": "rad",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.axis_flip_x": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.axis_flip_y": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.index_base": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.numbering": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.boundary_rule": {
+   "unit": "-",
+   "value": "floor",
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "grid.registration_version": {
+   "unit": "-",
+   "value": 0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "grid.registration_valid": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "grid.max_candidate_cells": {
+   "unit": "count",
+   "value": 4,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "grid.boundary_margin_m": {
+   "unit": "m",
+   "value": 0.1,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.assoc_gate_mahalanobis": {
+   "unit": "chi^2",
+   "value": 9.21,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.assoc_max_distance_m": {
+   "unit": "m",
+   "value": 1.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.assoc_ambiguity_margin": {
+   "unit": "chi^2",
+   "value": 2.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.track_id_hint_bonus": {
+   "unit": "chi^2",
+   "value": 1.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.merge_gate_mahalanobis": {
+   "unit": "chi^2",
+   "value": 9.21,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.min_separate_survivor_distance_m": {
+   "unit": "m",
+   "value": 0.5,
+   "source": "tuned on simulation",
+   "evidence": "simulation",
+   "note": "3.3b R-B sweep {0,0.3,0.4,0.5} on two_close_survivors (pairs 0.30-0.60 m apart): rule chose 0.5 (= previous default). Weak evidence: at most 1 of 80 survivors missed at any value; pairs below 0.30 m untested (boxes overlap). Real minimum spacing unknown (organiser question O8).",
+   "required": false
+  },
+  "l4.view_bin_deg": {
+   "unit": "deg",
+   "value": 30.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.view_bin_max_gap_s": {
+   "unit": "s",
+   "value": 5.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.obs_model_sigma_m": {
+   "unit": "m",
+   "value": 0.05,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "3.1c calibration sweep FAILED its rule; value not tuned. Redo on recorded data (Step 5).",
+   "required": false
+  },
+  "l4.ray_bias_sigma_m": {
+   "unit": "m",
+   "value": 0.1,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "3.1c calibration sweep FAILED its rule (no acceptable setting); value not tuned, kept as assumption. Redo on recorded data (Step 5).",
+   "required": false
+  },
+  "l4.max_effective_obs_per_bin": {
+   "unit": "count",
+   "value": 3,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.provisional_min_obs": {
+   "unit": "count",
+   "value": 2,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.confirm_min_obs": {
+   "unit": "count",
+   "value": 5,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.confirm_min_view_bins": {
+   "unit": "count",
+   "value": 1,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.confirm_min_span_s": {
+   "unit": "s",
+   "value": 0.5,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.confirm_prob": {
+   "unit": "prob",
+   "value": 0.9,
+   "source": "tuned on simulation",
+   "evidence": "simulation",
+   "note": "3.1c confirm_prob sweep {0.7,0.8,0.9,0.95}: pre-set rule kept 0.9 (no alternative scored more at every P>0, both offsets, both body models). Redo on recorded data.",
+   "required": false
+  },
+  "l4.cell_change_margin": {
+   "unit": "prob",
+   "value": 0.2,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.cell_change_updates": {
+   "unit": "count",
+   "value": 3,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.unreliable_nis": {
+   "unit": "chi^2",
+   "value": 6.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.nis_window": {
+   "unit": "count",
+   "value": 5,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.unreliable_ambiguous_streak": {
+   "unit": "count",
+   "value": 3,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.candidate_timeout_s": {
+   "unit": "s",
+   "value": 2.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l4.track_history_max": {
+   "unit": "count",
+   "value": 50,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "l4.max_tracks": {
+   "unit": "count",
+   "value": 64,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "l5.correction_source": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Hardware, calibration or competition value. Not guessed; the library reports CONFIG_MISSING until it is set.",
+   "required": true
+  },
+  "l5.observation_store_max": {
+   "unit": "count",
+   "value": 2000,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "l5.frame_correction_cov_inflation": {
+   "unit": "factor",
+   "value": 4.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.2); not swept against a decision rule.",
+   "required": false
+  },
+  "l5.uncorrected_cov_inflation": {
+   "unit": "factor",
+   "value": 4.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.2); not swept against a decision rule.",
+   "required": false
+  },
+  "l5.correction_history_max": {
+   "unit": "count",
+   "value": 8,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "l5.missing_correction_timeout_s": {
+   "unit": "s",
+   "value": 2.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.2); not swept against a decision rule.",
+   "required": false
+  },
+  "l5.recompute_mode": {
+   "unit": "-",
+   "value": "full",
+   "source": "tuned on simulation",
+   "evidence": "simulation",
+   "note": "3.2: only 'full' is exact (R1); R3 (<= 250 ms) FAILED for both modes; affected_tracks is available but not exact.",
+   "required": false
+  },
+  "l5.tag_history_max": {
+   "unit": "count",
+   "value": 8,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "l5.removed_tags_max": {
+   "unit": "count",
+   "value": 64,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "l5.telemetry_update_min_interval_s": {
+   "unit": "s",
+   "value": 1.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (substep 3.2); not swept against a decision rule.",
+   "required": false
+  },
+  "l5.telemetry_log_max": {
+   "unit": "count",
+   "value": 4096,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Bound on memory or list length; behaviour at the bound is unit tested, no accuracy claim.",
+   "required": false
+  },
+  "l5.telemetry_snapshot_period_s": {
+   "unit": "s",
+   "value": 5.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l5.telemetry_max_tags_per_snapshot": {
+   "unit": "count",
+   "value": 32,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l5.telemetry_send_candidates": {
+   "unit": "-",
+   "value": false,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l5.telemetry_link_budget_bps": {
+   "unit": "bit/s",
+   "value": 20000.0,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Default exercised in every simulation run since its substep (architecture.md (c)); not swept against a decision rule.",
+   "required": false
+  },
+  "l5.end_of_mission_commit_policy": {
+   "unit": "-",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Unset on purpose (O2). The INTERIM choice from 3.3b R-C is recorded under interim_choices; it is not applied as a default.",
+   "required": true
+  },
+  "l5.commit_min_obs": {
+   "unit": "count",
+   "value": 3,
+   "source": "ASSUMPTION",
+   "evidence": "simulation",
+   "note": "Used by the expected_value commit policy (3.1c); not swept.",
+   "required": false
+  },
+  "score.correct_tag_points": {
+   "unit": "points",
+   "value": 40.0,
+   "source": "rulebook",
+   "evidence": "rulebook",
+   "note": "rulebook p.19 (40 marks per correct tag)",
+   "required": true
+  },
+  "score.wrong_tag_penalty_assumed": {
+   "unit": "points",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Unset on purpose: penalty unknown (organiser question O2). Used only as an ASSUMED P in evaluation tables (P = 0..80).",
+   "required": false
+  }
+ },
+ "interim_choices": {
+  "final_tag_policy": {
+   "policy": "expected_value",
+   "threshold": 0.667,
+   "source": "interim",
+   "evidence": "simulation",
+   "note": "3.3b R-C per-P maximin over the 4 calibration combinations x P in {0,20,40,60,80}, Layers 1-5, 34 scenarios, 5 seeds. Best worst case (36.9 points/run at offset 0.3 fixed, P=80); it gives up 3-5 points/run at P=0 against threshold 0.5. The real choice depends on O2 and on calibration on real data. Pass it to final_tags(policy, threshold); l5.end_of_mission_commit_policy stays unset."
+  }
+ },
+ "simulation_only_values": {
+  "_note": "Constants of the simulated camera and scenarios, set by sim_pipelines.scenario_config and scenarios.SIM_LAYER1_OVERRIDES. Never hardware defaults.",
+  "l1.depth_min_m": 0.1,
+  "l1.depth_max_m": 10.0,
+  "l1.depth_noise_model": [
+   0.0,
+   0.0,
+   0.002
+  ],
+  "l2.max_interp_gap_s": 0.05,
+  "l2.max_rgb_depth_skew_s": 0.005,
+  "l2.pose_mode": "full_3d",
+  "map.floor_z_m": 0.0,
+  "clock.camera_to_pose_offset_ns": 0,
+  "clock.offset_uncertainty_ns": 0,
+  "grid.*": "from the scenario registration (6x6 arena, 1 m cells)",
+  "extr.T_body_camera": "scenario camera mount (tilt 20 deg default)"
+ },
+ "unfrozen_unknowns": [
+  {
+   "item": "l1.body_depth_offset_m (and its sigma)",
+   "needed": "measure the front-surface bias on real bodies (Step 5)",
+   "owner": "us, with hardware"
+  },
+  {
+   "item": "Layer 4 calibration (ray_bias_sigma_m, obs_model_sigma_m, confirm_prob, thresholds)",
+   "needed": "redo the 3.1c sweep on recorded data; it FAILED on simulation",
+   "owner": "us"
+  },
+  {
+   "item": "camera intrinsics, depth scale, resolution, frame rate",
+   "needed": "read from the driver or calibrate",
+   "owner": "hardware owner (H3)"
+  },
+  {
+   "item": "extrinsics extr.T_body_camera and its covariance",
+   "needed": "measure or calibrate mount position and tilt",
+   "owner": "hardware owner (H4)"
+  },
+  {
+   "item": "clock relation camera <-> pose, pose rate, max interpolation gap",
+   "needed": "measure",
+   "owner": "SLAM owner (S2, S3)"
+  },
+  {
+   "item": "official grid origin, axes, indexing, entry cell, wall-on-line",
+   "needed": "answer",
+   "owner": "organisers (O1)"
+  },
+  {
+   "item": "wrong/extra tag penalty and tag limit",
+   "needed": "answer; sets the final-tag policy",
+   "owner": "organisers (O2)"
+  },
+  {
+   "item": "map delivery format",
+   "needed": "answer",
+   "owner": "organisers (O3)"
+  },
+  {
+   "item": "dummy appearance, and how close survivors or dummies can be placed",
+   "needed": "answer; sets l4.min_separate_survivor_distance_m",
+   "owner": "organisers (O4, O8)"
+  },
+  {
+   "item": "which point of a lying body decides the cell; two survivors in one cell",
+   "needed": "answer",
+   "owner": "organisers (O5, O6)"
+  },
+  {
+   "item": "pose full 3D or planar; corrected history or correction events; map origin; floor height/levelness",
+   "needed": "answer",
+   "owner": "SLAM owner (S1, S4, S5, S6)"
+  },
+  {
+   "item": "detection message format, camera source, timestamp, dummy recall, rate",
+   "needed": "answer",
+   "owner": "detection owner (D1-D5)"
+  },
+  {
+   "item": "simulator interface",
+   "needed": "answer",
+   "owner": "controls team (C1-C3)"
+  },
+  {
+   "item": "Pi OS/Python/numpy, ROS 2 distro, RealSense driver, telemetry radio",
+   "needed": "answer",
+   "owner": "hardware owner (H1, H2, H3, H5)"
+  },
+  {
+   "item": "floor removal and footprint refinement (both OFF)",
+   "needed": "re-decide on real depth data; floor removal needs map.floor_z_m",
+   "owner": "us"
+  },
+  {
+   "item": "Pi 5 CPU, RAM and latency of the full pipeline; R3 recompute time",
+   "needed": "measure on the Pi",
+   "owner": "us"
+  }
+ ]
+}

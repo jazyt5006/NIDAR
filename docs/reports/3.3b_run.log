@@ -1,0 +1,5 @@
+stage calib: 230 s -> docs\reports\3.3b_cache_calib.json
+stage sweep: 32 s -> docs\reports\3.3b_cache_sweep.json
+stage rc: 236 s -> docs\reports\3.3b_cache_rc.json
+stage ablation: 448 s -> docs\reports\3.3b_cache_ablation.json
+stage ra: 42 s -> docs\reports\3.3b_cache_ra.json

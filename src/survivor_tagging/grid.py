@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, replace
+from functools import partial
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -139,6 +140,14 @@ def _phi(x: np.ndarray) -> np.ndarray:
     return np.array([0.5 * (1.0 + math.erf(v / math.sqrt(2.0))) for v in flat]).reshape(np.shape(x))
 
 
+_SQRT2 = math.sqrt(2.0)
+
+
+def _phi_s(v: float) -> float:
+    """Standard normal CDF of a scalar (same expression as _phi, element by element)."""
+    return 0.5 * (1.0 + math.erf(v / _SQRT2))
+
+
 def _interval_prob(lo, hi, mean, sd):
     if sd <= 0:
         return ((np.asarray(lo) <= mean) & (mean < np.asarray(hi))).astype(float)
@@ -168,38 +177,54 @@ def cell_probabilities(reg: GridRegistration, mean_map_xy: Sequence[float], cov_
     j = reg.jacobian()
     mu = reg.map_to_grid(mean_map_xy)
     cov = j @ np.asarray(cov_map_xy, dtype=float)[:2, :2] @ j.T
-    sx, sy = math.sqrt(max(cov[0, 0], 0.0)), math.sqrt(max(cov[1, 1], 0.0))
+    mu0, mu1 = float(mu[0]), float(mu[1])
+    sx, sy = math.sqrt(max(float(cov[0, 0]), 0.0)), math.sqrt(max(float(cov[1, 1]), 0.0))
     c = reg.cell_size_m
     k = PROB_WINDOW_SIGMA
-    i_range = range(math.floor((mu[0] - k * sx) / c), math.floor((mu[0] + k * sx) / c) + 1)
-    j_range = range(math.floor((mu[1] - k * sy) / c), math.floor((mu[1] + k * sy) / c) + 1)
-    y_lo = np.array([jj * c for jj in j_range])
-    y_hi = y_lo + c
+    i_range = range(math.floor((mu0 - k * sx) / c), math.floor((mu0 + k * sx) / c) + 1)
+    j_range = range(math.floor((mu1 - k * sy) / c), math.floor((mu1 + k * sy) / c) + 1)
+    # Scalar math.erf throughout (substep 3.4): same formulas as before, no per-call array allocation.
+    y_lo = [jj * c for jj in j_range]
+    y_hi = [lo + c for lo in y_lo]
     probs: Dict[Cell, float] = {}
-    diagonal = abs(cov[0, 1]) <= 1e-12 * max(sx * sy, 1e-300) or sx == 0 or sy == 0
+    cov01 = float(cov[0, 1])
+    diagonal = abs(cov01) <= 1e-12 * max(sx * sy, 1e-300) or sx == 0 or sy == 0
     if diagonal:
-        py = _interval_prob(y_lo, y_hi, mu[1], sy)
+        if sy <= 0:
+            py = [1.0 if (lo <= mu1 < hi) else 0.0 for lo, hi in zip(y_lo, y_hi)]
+        else:
+            py = [_phi_s((hi - mu1) / sy) - _phi_s((lo - mu1) / sy) for lo, hi in zip(y_lo, y_hi)]
         for ii in i_range:
-            px = float(_interval_prob(ii * c, (ii + 1) * c, mu[0], sx))
+            lo_x, hi_x = ii * c, (ii + 1) * c
+            if sx <= 0:
+                px = 1.0 if (lo_x <= mu0 < hi_x) else 0.0
+            else:
+                px = _phi_s((hi_x - mu0) / sx) - _phi_s((lo_x - mu0) / sx)
             for jj, p in zip(j_range, py):
-                probs[(ii, jj)] = px * float(p)
+                probs[(ii, jj)] = px * p
     else:
-        rho = cov[0, 1] / (sx * sy)
+        rho = cov01 / (sx * sy)
         s_cond = sy * math.sqrt(max(1.0 - rho * rho, 0.0))
         nodes, weights = _GL_RULE
         for ii in i_range:
-            a, b = max(ii * c, mu[0] - k * sx), min((ii + 1) * c, mu[0] + k * sx)
+            a, b = max(ii * c, mu0 - k * sx), min((ii + 1) * c, mu0 + k * sx)
             if b <= a:
                 continue
             x = 0.5 * (b - a) * nodes + 0.5 * (a + b)
-            wx = 0.5 * (b - a) * weights * np.exp(-0.5 * ((x - mu[0]) / sx) ** 2) / (sx * math.sqrt(2 * math.pi))
-            m = mu[1] + rho * sy / sx * (x - mu[0])  # conditional mean of y given x
-            for jj, lo, hi in zip(j_range, y_lo, y_hi):
-                if s_cond > 0:
-                    py = _phi((hi - m) / s_cond) - _phi((lo - m) / s_cond)
-                else:
-                    py = ((lo <= m) & (m < hi)).astype(float)
-                probs[(ii, jj)] = float(np.sum(wx * py))
+            wx = 0.5 * (b - a) * weights * np.exp(-0.5 * ((x - mu0) / sx) ** 2) / (sx * math.sqrt(2 * math.pi))
+            m = mu1 + rho * sy / sx * (x - mu0)  # conditional mean of y given x
+            if s_cond > 0:
+                # Phi at each distinct cell edge, shared by the two cells that meet there (edges are j * c)
+                edges = {}
+                for lo, hi in zip(y_lo, y_hi):
+                    for e in (lo, hi):
+                        if e not in edges:
+                            edges[e] = np.array([_phi_s((e - mv) / s_cond) for mv in m.tolist()])
+                for jj, lo, hi in zip(j_range, y_lo, y_hi):
+                    probs[(ii, jj)] = float(np.sum(wx * (edges[hi] - edges[lo])))
+            else:
+                for jj, lo, hi in zip(j_range, y_lo, y_hi):
+                    probs[(ii, jj)] = float(np.sum(wx * ((lo <= m) & (m < hi)).astype(float)))
     in_grid = {cell: p for cell, p in probs.items() if reg.in_grid_zero_based(*cell) is not False}
     unknown_extent = reg.n_cells_x is None or reg.n_cells_y is None
     out = 0.0 if unknown_extent else max(0.0, 1.0 - sum(in_grid.values()))
@@ -213,6 +238,10 @@ def cell_probabilities(reg: GridRegistration, mean_map_xy: Sequence[float], cov_
 # ---------------------------------------------------------------------------
 
 
+def _deferred_probs(reg: "GridRegistration", mean: np.ndarray, cov: np.ndarray, max_cells: int) -> Dict[Cell, float]:
+    return cell_probabilities(reg, mean, cov, max_cells).as_dict()
+
+
 def apply_grid(obs: SurvivorObservation, reg: GridRegistration, max_cells: int = 4) -> None:
     """Fill the Layer 3 fields of an observation that has p_map_m. Warnings: GRID_UNREGISTERED (BLOCK) when the
     registration is not valid (the cell is provisional, for diagnostics only); OUT_OF_GRID when outside."""
@@ -222,7 +251,10 @@ def apply_grid(obs: SurvivorObservation, reg: GridRegistration, max_cells: int =
     obs.boundary_distance_m = reg.boundary_distance_m(g)
     obs.registration_version = reg.version
     if obs.cov_map_m2 is not None:
-        obs.cell_probs = cell_probabilities(reg, obs.p_map_m[:2], obs.cov_map_m2[:2, :2], max_cells).as_dict()
+        # Deferred (substep 3.4): computed on first access of obs.cell_probs, from copies of the inputs.
+        obs.cell_probs = {}
+        obs._cell_probs_thunk = partial(_deferred_probs, reg, np.array(obs.p_map_m[:2], dtype=float),
+                                        np.array(obs.cov_map_m2[:2, :2], dtype=float), max_cells)
     if not reg.valid:
         obs.warnings.append(FailureReason.GRID_UNREGISTERED)
     if reg.is_out_of_grid(g):

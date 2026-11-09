@@ -1,0 +1,9 @@
+# End-of-mission commit (library Layer5Pipeline.final_tags).
+string policy                       # confirmed_only | confirmed_plus_provisional_top1 | expected_value
+float64 threshold                   # expected_value only; NaN = library default P/(40+P)
+---
+bool success
+string reason
+string policy_used
+float64 threshold_used              # NaN when the policy has none
+SurvivorTag[] tags

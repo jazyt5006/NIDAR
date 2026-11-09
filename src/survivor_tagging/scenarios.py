@@ -81,10 +81,12 @@ BODY_DEPTH_MODELS: Dict[str, Optional[Tuple[float, float]]] = {
 }
 
 
-def all_scenarios(placement: str = "random_in_cell", body_depth: str = "fixed") -> Dict[str, Scenario]:
+def all_scenarios(placement: str = "random_in_cell", body_depth: str = "fixed",
+                  with_two_close: bool = False) -> Dict[str, Scenario]:
     """All named scenarios. With "random_in_cell" (default) each survivor centre is drawn per seed inside its
     cell, or inside the narrower region a scenario states to keep its walls/occlusion valid; "nominal" uses the
-    authored centres. body_depth selects a BODY_DEPTH_MODELS entry (substep 3.1c; "fixed" = unchanged)."""
+    authored centres. with_two_close=True appends the two_close_survivors family (substep 3.3b; its pairs are 0.30-0.60 m
+    apart, so code that assumes a fixed spacing of every two-survivor scenario must not see it). body_depth selects a BODY_DEPTH_MODELS entry (substep 3.1c; "fixed" = unchanged)."""
     s = [
         make_scenario("standing", "standing survivor centred in cell (3,3), ~2.4 m ahead; basic geometry",
                       _one("standing")),
@@ -130,7 +132,8 @@ def all_scenarios(placement: str = "random_in_cell", body_depth: str = "fixed") 
     s += _layer4_scenarios()
     s += _layer5_scenarios()
     s += _layer33a_scenarios()
-    s += _two_close_scenarios()
+    if with_two_close:
+        s += _two_close_scenarios()
     if placement != "random_in_cell":
         s = [replace(x, placement=placement) for x in s]
     if BODY_DEPTH_MODELS[body_depth] is not None:

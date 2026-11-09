@@ -10,7 +10,7 @@ All results produced with this harness are **simulation tested on synthetic data
 | `scenarios.py` | Named scenarios, `make_scenario(...)` to build new ones, `make_ideal(scn)` to remove all noise and impairments. |
 | `harness.py` | `Pipeline` protocol, `run_scenario`, `evaluate`, `score_tags`, `format_table`. `python -m survivor_tagging.harness` runs the naive baseline over every scenario (5 seeds). |
 | `baseline.py` | `NaivePipeline`: deliberately naive control with a pluggable point estimator (`centre_pixel_estimator` default, `layer1_estimator` for the Layer 1 ablation). Never reused by the real layers. |
-| `experiments.py` | Substep 2.3 tables: reference, camera-frame comparison, end-to-end ablation, offset sweep. |
+| `experiments.py` | Substep 3.1b tables (originally 2.3): diagnostics, floor and footprint variants, decision rules. Later steps: see "Evaluation scripts and caching" below. |
 
 The simulator's geometry is independent of the pipeline: it projects the world into the image and ray-casts depth
 in the grid frame. A pipeline only ever sees image-space detections, depth pixels and poses, so frame or sign
@@ -136,3 +136,43 @@ error (median, p90), rejection counts by reason, and accepted false-positive obs
 - **3d_med / 3d_p90**: 3D distance to the true box centre (front-surface estimates carry the half-depth of
   the box as bias). **t_med_ms / t_p95_ms**: per-detection estimator time.
 `evaluate_many(pipelines, scenarios, seeds, estimators)` generates each event stream once for all of them.
+
+## Layer 5 scenarios and events (substep 3.2)
+Event kinds added to the stream: `correction` (a `PoseCorrection`: `history` = corrected poses for a time range, or
+`frame_correction` = one map jump) and `registration` (`RegistrationUpdate`). `run_events` calls
+`process_correction` / `process_registration_event` only if the pipeline has them, so Layers 1-4 simply ignore them
+(this is the "before Layer 5" case). `Closure(at_s, mode="history", range_s=None, residual_sigma_m=0.02, ..., emit=True)` in a trajectory defines a
+correction; `emit=False` never delivers it (missing-correction test). Drift restarts at each closure; live drift after a
+closure is random per segment, with a covariance matching it (3.3a). The 7th random stream draws that drift.
+| Name | Tests |
+|---|---|
+| loop_closure_late | tag CONFIRMED under a 0.4 m error, closure at 5.0 s, history arrives 0.2 s later |
+| repeated_corrections | drift 0.12 m/s restarting at closures 2.0 s and 4.0 s; the second re-optimises [0, 4.0 s) |
+| partial_history | corrected history covers only [0.9, 1.5) s: older observations stay uncorrected |
+| registration_update | pipeline starts with a registration 0.45 m / 0.03 rad off; the true one arrives at 1.5 s |
+| frame_correction | drift 0.15 m/s removed by one map jump at 2.5 s |
+| double_detection | 50 % of frames carry a second box on the same person (3.3a); one tag expected |
+| two_close_survivors/* | 8 pair types (3.3b), see below; only with `all_scenarios(with_two_close=True)` |
+
+`pre_32_scenarios()` returns the original 20 so that the 3.1b/3.1c evaluations stay reproducible.
+
+### two_close_survivors family (substep 3.3b)
+Two survivors side by side for the camera (separated along grid y), centres 0.30 to 0.60 m apart, chosen so that the boxes
+do not overlap (y extent 0.3 m standing, 0.5 m sitting): stand_030_same, stand_030_adj, stand_045_same, stand_045_adj,
+stand_060_adj, mix_040_same (standing + sitting), sit_050_adj, sit_060_same. `adj` = the pair straddles the y = 3 edge
+(cells (3,2) and (3,3)), `same` = both in cell (3,3). The scenarios are opt-in because other tests assume a fixed 0.8 m
+spacing for every two-survivor scenario. The name prefix is `scenarios.TWO_CLOSE_PREFIX`.
+
+## Evaluation scripts and caching (substeps 3.2 - 3.3b)
+- `experiments_layer5.py` (3.2), `experiments_33a.py` (3.3a, before/after JSON), `experiments_33b.py` (3.3b). Raw rows are
+  saved under `docs/reports/` (JSON) so that a report can be regenerated without re-running; delete a cache file to
+  recompute its stage.
+- 3.3b stage `calib` and `sweep` cache Layers 1-3 (`CachePipeline`) and replay Layer 4; stages `rc`, `ablation`, `ra`
+  run the whole pipelines and store, per run, the score fields and (committed correct, committed total) for every
+  final-tag candidate.
+- **Mission points per run** = 40 x (correct committed tags) - P x (other committed tags), P in {0, 20, 40, 60, 80} ASSUMED
+  (O2 unknown). A committed tag is correct if it is the nearest tag within 1 m of a survivor and in the true cell; a
+  second tag for one survivor, a wrong-cell tag and a tag with no survivor are "other". UNRELIABLE tags are never
+  committed. `harness.mission_points` takes the penalty as a signed number (pass -P).
+- Pipelines without a commit step (naive, Layer 1, Layers 1-3) commit every output tag.
+- Pooled rows weight every run equally; the two_close family therefore contributes 8 scenarios x 5 seeds of 170 runs.

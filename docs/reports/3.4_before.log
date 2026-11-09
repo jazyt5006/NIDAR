@@ -1,0 +1,3 @@
+500 {'feed_s_500': 13.7, 'full_whole_500_ms': 6740.2}
+1000 {'feed_s_1000': 13.8, 'full_whole_1000_ms': 5187.5}
+2000 {'feed_s_2000': 10.6, 'full_whole_2000_ms': 7956.6, 'affected_whole_2000_ms': 4024.1, 'full_frame4s_2000_ms': 6353.2, 'affected_frame4s_2000_ms': 380.2}

@@ -65,7 +65,7 @@ def _workers() -> int:
 
 
 def _scenario(name: str, model: str = "fixed"):
-    return all_scenarios(body_depth=model)[name]
+    return all_scenarios(body_depth=model, with_two_close=True)[name]
 
 
 # ---------------------------------------------------------------------------
@@ -180,13 +180,13 @@ def _run_all(tasks: list) -> list:
 
 def stage_rc() -> list:
     """Layers 1-5, all scenarios, the four calibration combinations, seeds 0-4."""
-    names = list(all_scenarios())
+    names = list(all_scenarios(with_two_close=True))
     tasks = [("l15", o, m, n, SEEDS, {}) for o, m in rule_combos() for n in names]
     return _run_all(tasks)
 
 
 def stage_ablation() -> list:
-    names = list(all_scenarios())
+    names = list(all_scenarios(with_two_close=True))
     tasks = [("naive", 0.0, "fixed", n, SEEDS, {}) for n in names]
     for off in OFFSETS:
         for kind in ("l1", "l123", "l1234", "l15"):
@@ -280,18 +280,33 @@ def report_calib() -> List[str]:
                          f"{ece(allp, allc, 10, 0.5):>7.3f}{'':>19}{b67.count:>15}{b67.mean_pred:>7.3f}"
                          f"{b67.frac_correct:>7.3f}")
     lines.append("")
-    lines.append("Scenarios behind the 0.6-0.7 bin over-confidence (offset 0.2, fixed): share of the bin's total "
-                 "over-confidence mass sum(n x over), scenarios with a positive contribution only")
-    tot = {}
-    for name, dd in contrib.items():
-        if (0.2, "fixed") in dd:
-            n, ov = dd[(0.2, "fixed")]
-            tot[name] = n * ov
-    pos = {k: v for k, v in tot.items() if v > 0}
-    z = sum(pos.values())
-    for k, v in sorted(pos.items(), key=lambda kv: -kv[1]):
-        lines.append(f"  {k:<30} n {contrib[k][(0.2, 'fixed')][0]:>4}  over {contrib[k][(0.2, 'fixed')][1]:+.3f}  "
-                     f"share {v / z:.2f}")
+    for model in ("fixed", "uniform_0.2_0.5"):
+        for off in OFFSETS:
+            ps, cs, ps_x, cs_x = [], [], [], []
+            for key, smp in d.items():
+                o, m, name = key.split("|")
+                if float(o) != off or m != model:
+                    continue
+                ps += [x for x, _ in smp]
+                cs += [y for _, y in smp]
+                if name != "cell_boundary":
+                    ps_x += [x for x, _ in smp]
+                    cs_x += [y for _, y in smp]
+            b_all, b_x = reliability_table(ps, cs)[6], reliability_table(ps_x, cs_x)[6]
+            lines.append(f"pooled offset {off:.1f} {model:<16}: ECE {ece(ps, cs, 10, 0.5):.3f}, bin 0.6-0.7 n {b_all.count} "
+                         f"pred {b_all.mean_pred:.3f} obs {b_all.frac_correct:.3f}  | without cell_boundary: ECE "
+                         f"{ece(ps_x, cs_x, 10, 0.5):.3f}, bin 0.6-0.7 n {b_x.count} pred {b_x.mean_pred:.3f} "
+                         f"obs {b_x.frac_correct:.3f}")
+    for off in OFFSETS:
+        lines.append(f"Scenarios behind the 0.6-0.7 bin over-confidence (offset {off:.1f}, fixed): share of the bin's "
+                     "total positive over-confidence mass sum(n x over)")
+        tot = {name: dd[(off, "fixed")][0] * dd[(off, "fixed")][1] for name, dd in contrib.items()
+               if (off, "fixed") in dd}
+        pos = {k: v for k, v in tot.items() if v > 0}
+        z = sum(pos.values())
+        for k, v in sorted(pos.items(), key=lambda kv: -kv[1]):
+            lines.append(f"  {k:<30} n {contrib[k][(off, 'fixed')][0]:>4}  over {contrib[k][(off, 'fixed')][1]:+.3f}  "
+                         f"share {v / z:.2f}")
     return lines
 
 

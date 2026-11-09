@@ -1,0 +1,50 @@
+== FULL RECOMPUTE (2000 stored) ==
+         11240919 function calls (11240918 primitive calls) in 40.034 seconds
+
+   Ordered by: internal time
+   List reduced from 275 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   189316    4.973    0.000   10.228    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\linalg\_linalg.py:536(inv)
+     2556    3.710    0.001   22.633    0.009 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:233(fuse)
+     4556    2.065    0.000    6.797    0.001 D:\Study Material\College\NIDAR\src\survivor_tagging\grid.py:157(cell_probabilities)
+    35128    1.859    0.000    3.192    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\grid.py:136(_phi)
+    74027    1.401    0.000    2.469    0.000 {built-in method builtins.sum}
+   110474    1.197    0.000    1.197    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+     4750    1.164    0.000    2.039    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:214(view_bins)
+   152025    1.067    0.000    1.067    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:240(<genexpr>)
+   106880    0.963    0.000    2.196    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\linalg\_linalg.py:2598(norm)
+    39752    0.865    0.000    2.436    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\_core\_methods.py:115(_mean)
+   192123    0.794    0.000    1.594    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\linalg\_linalg.py:189(_commonType)
+    60383    0.774    0.000    0.774    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:278(stamps)
+   106880    0.742    0.000    0.742    0.000 {method 'dot' of 'numpy.ndarray' objects}
+    37414    0.717    0.000    0.848    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\_core\numeric.py:909(outer)
+    39752    0.584    0.000    3.020    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\_core\fromnumeric.py:3699(mean)
+
+
+
+== LIVE FEED (whole stream, Layers 1-5) ==
+         16075746 function calls (16075712 primitive calls) in 61.455 seconds
+
+   Ordered by: internal time
+   List reduced from 612 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   146308    3.912    0.000    8.003    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\linalg\_linalg.py:536(inv)
+     5253    2.574    0.000    8.497    0.002 D:\Study Material\College\NIDAR\src\survivor_tagging\grid.py:157(cell_probabilities)
+     2695    2.363    0.001   16.465    0.006 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:233(fuse)
+    43514    2.337    0.000    4.034    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\grid.py:136(_phi)
+   169213    2.225    0.000    2.225    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:278(stamps)
+   106028    1.531    0.000    1.531    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+     1222    1.447    0.001    5.351    0.004 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:542(_merge)
+   139650    1.240    0.000    2.872    0.000 C:\Users\Dell\AppData\Local\Programs\Python\Python313\Lib\site-packages\numpy\linalg\_linalg.py:2598(norm)
+    49401    1.113    0.000    2.088    0.000 {built-in method builtins.sum}
+    12803    1.003    0.000    5.332    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:698(_tag)
+   139650    0.984    0.000    0.984    0.000 {method 'dot' of 'numpy.ndarray' objects}
+     4243    0.955    0.000    1.664    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:214(view_bins)
+   125378    0.953    0.000    0.953    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\tracking.py:240(<genexpr>)
+    13651    0.919    0.000    4.805    0.000 D:\Study Material\College\NIDAR\src\survivor_tagging\output.py:413(step)
+     2562    0.849    0.000    8.263    0.003 D:\Study Material\College\NIDAR\src\survivor_tagging\geometry.py:382(estimate_survivor_point)
+
+
+

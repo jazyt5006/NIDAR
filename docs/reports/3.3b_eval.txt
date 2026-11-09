@@ -1,0 +1,284 @@
+SIMULATION tested on synthetic data (3.3b). Points are ASSUMED-scoring (O2 unknown).
+
+== A. Per-scenario calibration (Layer 4 current defaults, seeds 0-7, scenarios as in 3.1c: loop_closure and prone excluded) ==
+ECE over samples with p >= 0.5; worst = the most over-confident bin (10 bins) with >= 20 samples (mean predicted - observed); '-' = no bin with 20 samples.
+-- offset 0.0, true model fixed
+scenario                           n n(p>=.5)    ECE  worst bin    over bin 0.6-0.7: n   pred    obs
+cell_boundary                    115      115  0.869    0.9-1.0  +0.930              4  0.670  0.000
+id_merge                         216      214  0.240    0.8-0.9  +0.627             15  0.649  1.000
+id_switch                        105      105  0.163    0.9-1.0  +0.201             36  0.641  0.722
+intermittent_false_positive      108       95  0.061    0.9-1.0  -0.029              0      -      -
+latency_fast_yaw                 112      112  0.480    0.8-0.9  +0.884             14  0.639  0.000
+low_occluder                     104      104  0.119    0.9-1.0  +0.006              0      -      -
+near_wall                        112      112  0.056    0.9-1.0  -0.036              0      -      -
+occluded                         112      112  0.114    0.9-1.0  -0.017             13  0.643  1.000
+opposite_views_boundary          212      212  0.281    0.8-0.9  +0.740             24  0.654  0.542
+revisit_after_gap                175      175  0.256    0.8-0.9  +0.580             27  0.636  0.593
+sitting                          110      107  0.125    0.9-1.0  -0.013              8  0.615  1.000
+standing                         112      112  0.186    0.9-1.0  -0.028             30  0.675  0.967
+thin_person_in_front_of_wall     106      106  0.480    0.9-1.0  +0.674              3  0.690  0.333
+tilt_0                           109       95  0.434    0.8-0.9  +0.496              0      -      -
+tilt_30                          108      108  0.262    0.8-0.9  +0.129             17  0.672  0.059
+tilt_45                           64       54  0.293    0.5-0.6  +0.037              7  0.612  0.000
+two_adjacent                     217      216  0.116    0.7-0.8  +0.208             14  0.631  0.929
+two_same_cell                    215      202  0.132    0.9-1.0  -0.028              2  0.664  1.000
+POOLED                          2412     2356  0.164                               214  0.649  0.640
+-- offset 0.2, true model fixed
+scenario                           n n(p>=.5)    ECE  worst bin    over bin 0.6-0.7: n   pred    obs
+cell_boundary                    115       88  0.620    0.6-0.7  +0.634             80  0.634  0.000
+id_merge                         217      217  0.163    0.6-0.7  +0.641             20  0.641  0.000
+id_switch                        105      105  0.147    0.6-0.7  +0.295             20  0.645  0.350
+intermittent_false_positive      108      107  0.099    0.6-0.7  -0.032             21  0.635  0.667
+latency_fast_yaw                 112      110  0.307    0.5-0.6  +0.558             13  0.678  1.000
+low_occluder                     104      104  0.066    0.9-1.0  -0.002             12  0.646  1.000
+near_wall                        112      112  0.024    0.9-1.0  -0.014              0      -      -
+occluded                         112      112  0.050    0.9-1.0  -0.039              0      -      -
+opposite_views_boundary          212      212  0.068    0.6-0.7  +0.224             26  0.647  0.423
+revisit_after_gap                175      157  0.131    0.5-0.6  +0.310             12  0.645  0.250
+sitting                          110      110  0.089    0.9-1.0  -0.024              9  0.669  0.000
+standing                         111       98  0.134    0.9-1.0  -0.045             14  0.647  1.000
+thin_person_in_front_of_wall     106      106  0.223    0.5-0.6  +0.578             34  0.650  0.765
+tilt_0                           109       95  0.096    0.9-1.0  -0.005              5  0.670  1.000
+tilt_30                          108      104  0.082    0.6-0.7  +0.053             29  0.640  0.586
+tilt_45                           64       59  0.101    0.5-0.6  -0.046             13  0.654  0.462
+two_adjacent                     217      215  0.137    0.9-1.0  -0.025             40  0.652  1.000
+two_same_cell                    215      199  0.179    0.9-1.0  -0.032             20  0.634  1.000
+POOLED                          2412     2310  0.073                               368  0.645  0.511
+-- offset 0.0, true model uniform_0.2_0.5
+scenario                           n n(p>=.5)    ECE  worst bin    over bin 0.6-0.7: n   pred    obs
+cell_boundary                    115      115  0.754    0.8-0.9  +0.812             11  0.645  0.000
+id_merge                         216      214  0.176    0.7-0.8  +0.535             15  0.667  0.733
+id_switch                        105      104  0.213    0.9-1.0  +0.177             13  0.676  1.000
+intermittent_false_positive      108       95  0.058    0.9-1.0  -0.035              0      -      -
+latency_fast_yaw                 112      110  0.299    0.5-0.6  +0.035             17  0.683  0.000
+low_occluder                     104      104  0.088    0.9-1.0  -0.004             13  0.676  0.000
+near_wall                        112      112  0.040    0.9-1.0  -0.025              0      -      -
+occluded                         114      114  0.073    0.9-1.0  -0.034              0      -      -
+opposite_views_boundary          212      212  0.223    0.8-0.9  +0.511             26  0.652  0.538
+revisit_after_gap                173      169  0.194    0.7-0.8  +0.359             28  0.644  0.679
+sitting                          110      109  0.117    0.9-1.0  -0.008              4  0.613  1.000
+standing                         112      111  0.154    0.9-1.0  -0.019              8  0.627  0.875
+thin_person_in_front_of_wall     106      106  0.437    0.8-0.9  +0.439             12  0.687  0.000
+tilt_0                           109      109  0.331    0.6-0.7  +0.621             28  0.657  0.036
+tilt_30                          108      108  0.144    0.5-0.6  -0.024              4  0.644  0.250
+tilt_45                           78       62  0.298    0.5-0.6  +0.260             10  0.624  0.700
+two_adjacent                     217      216  0.079    0.7-0.8  +0.227             44  0.653  0.636
+two_same_cell                    215      214  0.135    0.9-1.0  -0.055             16  0.637  1.000
+POOLED                          2426     2384  0.111                               249  0.655  0.486
+-- offset 0.2, true model uniform_0.2_0.5
+scenario                           n n(p>=.5)    ECE  worst bin    over bin 0.6-0.7: n   pred    obs
+cell_boundary                    115       87  0.242    0.4-0.5  +0.456             44  0.654  1.000
+id_merge                         217      217  0.086    0.9-1.0  -0.034             53  0.644  0.698
+id_switch                        105      105  0.177    0.9-1.0  -0.033             14  0.619  1.000
+intermittent_false_positive      108      107  0.165    0.6-0.7  -0.024             21  0.642  0.667
+latency_fast_yaw                 112      111  0.236    0.8-0.9  -0.152              3  0.655  1.000
+low_occluder                     104      104  0.092    0.9-1.0  -0.025              2  0.686  1.000
+near_wall                        112      112  0.038    0.9-1.0  -0.029              0      -      -
+occluded                         114      114  0.100    0.9-1.0  -0.021             14  0.634  1.000
+opposite_views_boundary          212      212  0.051    0.8-0.9  +0.060             15  0.639  0.933
+revisit_after_gap                173      140  0.074    0.5-0.6  -0.017             28  0.663  0.750
+sitting                          110      110  0.111    0.9-1.0  -0.045              0      -      -
+standing                         111      109  0.205    0.5-0.6  +0.545              0      -      -
+thin_person_in_front_of_wall     106      104  0.109    0.9-1.0  -0.011              1  0.699  1.000
+tilt_0                           109      100  0.144    0.9-1.0  -0.003             24  0.622  1.000
+tilt_30                          108      105  0.152    0.9-1.0  -0.001             11  0.615  1.000
+tilt_45                           75       63  0.127    0.5-0.6  +0.035              6  0.633  0.167
+two_adjacent                     217      215  0.093    0.9-1.0  -0.030              4  0.669  1.000
+two_same_cell                    215      198  0.127    0.5-0.6  +0.010             41  0.620  1.000
+POOLED                          2423     2313  0.075                               281  0.640  0.872
+
+pooled offset 0.0 fixed           : ECE 0.164, bin 0.6-0.7 n 214 pred 0.649 obs 0.640  | without cell_boundary: ECE 0.128, bin 0.6-0.7 n 210 pred 0.648 obs 0.652
+pooled offset 0.2 fixed           : ECE 0.073, bin 0.6-0.7 n 368 pred 0.645 obs 0.511  | without cell_boundary: ECE 0.052, bin 0.6-0.7 n 288 pred 0.648 obs 0.653
+pooled offset 0.0 uniform_0.2_0.5 : ECE 0.111, bin 0.6-0.7 n 249 pred 0.655 obs 0.486  | without cell_boundary: ECE 0.078, bin 0.6-0.7 n 238 pred 0.655 obs 0.508
+pooled offset 0.2 uniform_0.2_0.5 : ECE 0.075, bin 0.6-0.7 n 281 pred 0.640 obs 0.872  | without cell_boundary: ECE 0.073, bin 0.6-0.7 n 237 pred 0.637 obs 0.848
+Scenarios behind the 0.6-0.7 bin over-confidence (offset 0.0, fixed): share of the bin's total positive over-confidence mass sum(n x over)
+  tilt_30                        n   17  over +0.613  share 0.33
+  latency_fast_yaw               n   14  over +0.639  share 0.29
+  tilt_45                        n    7  over +0.612  share 0.14
+  opposite_views_boundary        n   24  over +0.113  share 0.09
+  cell_boundary                  n    4  over +0.670  share 0.09
+  revisit_after_gap              n   27  over +0.044  share 0.04
+  thin_person_in_front_of_wall   n    3  over +0.356  share 0.03
+Scenarios behind the 0.6-0.7 bin over-confidence (offset 0.2, fixed): share of the bin's total positive over-confidence mass sum(n x over)
+  cell_boundary                  n   80  over +0.634  share 0.56
+  id_merge                       n   20  over +0.641  share 0.14
+  sitting                        n    9  over +0.669  share 0.07
+  id_switch                      n   20  over +0.295  share 0.07
+  opposite_views_boundary        n   26  over +0.224  share 0.06
+  revisit_after_gap              n   12  over +0.395  share 0.05
+  tilt_45                        n   13  over +0.192  share 0.03
+  tilt_30                        n   29  over +0.053  share 0.02
+
+== R-B. two_close_survivors: merge-distance sweep (Layers 1-4, 8 pair types x 5 seeds, 2 survivors each) ==
+ min_sep  offset survivors  missed missed rate  correct  dup/run false/run
+    0.00     0.0        80       1       0.013    0.988     0.00      0.00
+    0.00     0.2        80       0       0.000    0.963     0.03      0.00
+    0.30     0.0        80       0       0.000    1.000     0.00      0.00
+    0.30     0.2        80       0       0.000    0.963     0.00      0.00
+    0.40     0.0        80       0       0.000    1.000     0.00      0.00
+    0.40     0.2        80       0       0.000    0.963     0.00      0.00
+    0.50     0.0        80       0       0.000    1.000     0.00      0.00
+    0.50     0.2        80       0       0.000    0.963     0.00      0.00
+rule: largest min_sep with missed rate <= (rate at 0) + 0.02 at BOTH offsets
+  min_sep 0.0: off 0.0 0.013 vs limit 0.033, off 0.2 0.000 vs limit 0.020 -> OK
+  min_sep 0.3: off 0.0 0.000 vs limit 0.033, off 0.2 0.000 vs limit 0.020 -> OK
+  min_sep 0.4: off 0.0 0.000 vs limit 0.033, off 0.2 0.000 vs limit 0.020 -> OK
+  min_sep 0.5: off 0.0 0.000 vs limit 0.033, off 0.2 0.000 vs limit 0.020 -> OK
+CHOSEN: 0.5
+-- per pair type, missed rate at offsets 0.0 / 0.2 for min_sep 0.0 / 0.3 / 0.4 / 0.5
+  stand_030_same   off 0.0: 0.00 0.00 0.00 0.00   off 0.2: 0.00 0.00 0.00 0.00
+  stand_030_adj    off 0.0: 0.00 0.00 0.00 0.00   off 0.2: 0.00 0.00 0.00 0.00
+  stand_045_same   off 0.0: 0.00 0.00 0.00 0.00   off 0.2: 0.00 0.00 0.00 0.00
+  stand_045_adj    off 0.0: 0.00 0.00 0.00 0.00   off 0.2: 0.00 0.00 0.00 0.00
+  stand_060_adj    off 0.0: 0.00 0.00 0.00 0.00   off 0.2: 0.00 0.00 0.00 0.00
+  mix_040_same     off 0.0: 0.00 0.00 0.00 0.00   off 0.2: 0.00 0.00 0.00 0.00
+  sit_050_adj      off 0.0: 0.00 0.00 0.00 0.00   off 0.2: 0.00 0.00 0.00 0.00
+  sit_060_same     off 0.0: 0.10 0.00 0.00 0.00   off 0.2: 0.00 0.00 0.00 0.00
+
+== R-C. Interim final-tag policy (Layers 1-5, all 34 scenarios, 5 seeds; points per run) ==
+-- offset 0.1, true model uniform_0.2_0.5 (170 runs); points per run at P = 0, 20, 40, 60, 80
+confirmed_only     34.12   33.88   33.65   33.41   33.18
+ev_0.500           46.12   43.06   40.00   36.94   33.88
+ev_0.600           44.71   43.18   41.65   40.12   38.59
+ev_0.667           43.06   42.24   41.41   40.59   39.76
+-- offset 0.2, true model fixed (170 runs); points per run at P = 0, 20, 40, 60, 80
+confirmed_only     36.00   35.76   35.53   35.29   35.06
+ev_0.500           45.65   42.12   38.59   35.06   31.53
+ev_0.600           44.00   41.76   39.53   37.29   35.06
+ev_0.667           42.12   41.53   40.94   40.35   39.76
+-- offset 0.2, true model uniform_0.2_0.5 (170 runs); points per run at P = 0, 20, 40, 60, 80
+confirmed_only     32.24   32.00   31.76   31.53   31.29
+ev_0.500           48.00   45.41   42.82   40.24   37.65
+ev_0.600           45.65   44.24   42.82   41.41   40.00
+ev_0.667           43.06   42.47   41.88   41.29   40.71
+-- offset 0.3, true model fixed (170 runs); points per run at P = 0, 20, 40, 60, 80
+confirmed_only     32.00   31.65   31.29   30.94   30.59
+ev_0.500           46.59   43.29   40.00   36.71   33.41
+ev_0.600           44.71   43.06   41.41   39.76   38.12
+ev_0.667           42.59   41.18   39.76   38.35   36.94
+worst case over the 4 combinations x 5 penalties:
+  confirmed_only     30.59   (at offset 0.3 fixed, P = 80)
+  ev_0.500           31.53   (at offset 0.2 fixed, P = 80)
+  ev_0.600           35.06   (at offset 0.2 fixed, P = 80)
+  ev_0.667           36.94   (at offset 0.3 fixed, P = 80)
+CHOSEN (INTERIM, per-P maximin): ev_0.667
+
+== R-A. A3 quantification, Layers 1-5 final_tags(ev_0.667), 5 seeds, mission points per run ==
+before = l4.min_separate_survivor_distance_m 0 (3.2 behaviour), after = 0.5. ASSUMED scoring: +40 per correct committed tag, -P per other committed tag.
+scenario                       offset   P  before   after  change
+-----------------------------------------------------------------
+revisit_after_gap                 0.0   0   16.00   16.00   +0.00
+opposite_views_boundary           0.0   0   32.00   32.00   +0.00
+thin_person_in_front_of_wall      0.0   0    8.00    8.00   +0.00
+POOLED                            0.0   0   18.67   18.67   +0.00
+revisit_after_gap                 0.2   0   24.00   24.00   +0.00
+opposite_views_boundary           0.2   0   32.00   32.00   +0.00
+thin_person_in_front_of_wall      0.2   0   16.00   16.00   +0.00
+POOLED                            0.2   0   24.00   24.00   +0.00
+revisit_after_gap                both   0   20.00   20.00   +0.00
+opposite_views_boundary          both   0   32.00   32.00   +0.00
+thin_person_in_front_of_wall     both   0   12.00   12.00   +0.00
+POOLED                           both   0   21.33   21.33   +0.00
+revisit_after_gap                 0.0  40    8.00    0.00   -8.00
+opposite_views_boundary           0.0  40   24.00   24.00   +0.00
+thin_person_in_front_of_wall      0.0  40  -16.00  -24.00   -8.00
+POOLED                            0.0  40    5.33    0.00   -5.33
+revisit_after_gap                 0.2  40   24.00   16.00   -8.00
+opposite_views_boundary           0.2  40   24.00   24.00   +0.00
+thin_person_in_front_of_wall      0.2  40   16.00   16.00   +0.00
+POOLED                            0.2  40   21.33   18.67   -2.67
+revisit_after_gap                both  40   16.00    8.00   -8.00
+opposite_views_boundary          both  40   24.00   24.00   +0.00
+thin_person_in_front_of_wall     both  40    0.00   -4.00   -4.00
+POOLED                           both  40   13.33    9.33   -4.00
+pooled net change at P = 40: -4.00 points per run (flag threshold -1.0): *** FLAG: NEGATIVE BY MORE THAN 1.0 ***; at P = 0: +0.00
+
+== C. Ablation (5 seeds, random placement, true body model fixed; L1-4 and L1-5 points use final_tags(ev_0.667) [INTERIM]; other rows commit every output tag) ==
+-- pooled, all 34 scenarios (the two_close_survivors family counts as its 8 members)
+pipeline                  off runs corr_any corr_conf missed f_conf f_prov   dup err_med t_conf  pts P=0 pts P=40
+naive                     0.0  170    0.778     0.778   0.00   1.25   0.00  0.81   0.243   0.00    41.18   -32.00
+Layer 1                   0.0  170    0.791     0.791   0.00   1.19   0.00  0.81   0.239   0.00    41.88   -29.41
+Layer 1                   0.2  170    0.849     0.849   0.00   1.03   0.00  0.81   0.054   0.00    44.94   -23.29
+Layers 1-3 (1 tag/id)     0.0  170    0.773     0.773   0.00   1.24   0.00  0.81   0.249   0.00    40.94   -31.29
+Layers 1-3 (1 tag/id)     0.2  170    0.840     0.840   0.00   1.05   0.00  0.81   0.061   0.00    44.47   -24.24
+Layers 1-4                0.0  170    0.796     0.458   0.00   0.11   0.24  0.08   0.249   0.80    36.24    25.88
+Layers 1-4                0.2  170    0.849     0.662   0.00   0.04   0.22  0.07   0.064   0.80    41.65    37.65
+Layers 1-5                0.0  170    0.809     0.471   0.00   0.08   0.20  0.01   0.249   0.80    36.71    28.47
+Layers 1-5                0.2  170    0.862     0.680   0.00   0.01   0.21  0.01   0.064   0.80    42.12    40.94
+-- prone
+pipeline                  off runs corr_any corr_conf missed f_conf f_prov   dup err_med t_conf  pts P=0 pts P=40
+naive                     0.0    5    0.400     0.400   0.00   1.20   0.00  0.40   0.505   0.00    16.00   -40.00
+Layer 1                   0.0    5    0.400     0.400   0.00   1.20   0.00  0.40   0.534   0.00    16.00   -40.00
+Layer 1                   0.2    5    0.600     0.600   0.00   1.00   0.00  0.40   0.373   0.00    24.00   -24.00
+Layers 1-3 (1 tag/id)     0.0    5    0.400     0.400   0.00   1.40   0.00  0.40   0.552   0.00    16.00   -40.00
+Layers 1-3 (1 tag/id)     0.2    5    0.400     0.400   0.00   1.20   0.00  0.40   0.391   0.00    16.00   -40.00
+Layers 1-4                0.0    5    0.400     0.000   0.00   0.00   0.60  0.00   0.484    nan     0.00    -8.00
+Layers 1-4                0.2    5    0.400     0.000   0.00   0.00   0.60  0.00   0.360    nan    16.00    16.00
+Layers 1-5                0.0    5    0.400     0.000   0.00   0.00   0.60  0.00   0.484    nan     0.00    -8.00
+Layers 1-5                0.2    5    0.400     0.000   0.00   0.00   0.60  0.00   0.360    nan    16.00    16.00
+-- tilt_45
+pipeline                  off runs corr_any corr_conf missed f_conf f_prov   dup err_med t_conf  pts P=0 pts P=40
+naive                     0.0    5    0.200     0.200   0.00   1.20   0.00  0.00   0.257   0.00     8.00   -40.00
+Layer 1                   0.0    5    0.400     0.400   0.00   1.00   0.00  0.20   0.242   0.00    16.00   -24.00
+Layer 1                   0.2    5    0.800     0.800   0.00   0.60   0.00  0.20   0.114   0.00    32.00     8.00
+Layers 1-3 (1 tag/id)     0.0    5    0.200     0.200   0.00   1.20   0.00  0.20   0.249   0.00     8.00   -40.00
+Layers 1-3 (1 tag/id)     0.2    5    0.800     0.800   0.00   0.60   0.00  0.20   0.117   0.00    32.00     8.00
+Layers 1-4                0.0    5    0.200     0.000   0.00   0.00   0.80  0.00   0.256    nan     8.00     0.00
+Layers 1-4                0.2    5    0.600     0.200   0.00   0.00   0.40  0.00   0.127   1.20    16.00    16.00
+Layers 1-5                0.0    5    0.200     0.000   0.00   0.00   0.80  0.00   0.256    nan     8.00     0.00
+Layers 1-5                0.2    5    0.600     0.200   0.00   0.00   0.40  0.00   0.127   1.20    16.00    16.00
+-- cell_boundary
+pipeline                  off runs corr_any corr_conf missed f_conf f_prov   dup err_med t_conf  pts P=0 pts P=40
+naive                     0.0    5    0.000     0.000   0.00   1.60   0.00  0.60   0.239   0.00     0.00   -72.00
+Layer 1                   0.0    5    0.000     0.000   0.00   1.60   0.00  0.80   0.237   0.00     0.00   -80.00
+Layer 1                   0.2    5    0.000     0.000   0.00   1.60   0.00  0.80   0.049   0.00     0.00   -80.00
+Layers 1-3 (1 tag/id)     0.0    5    0.000     0.000   0.00   1.60   0.00  0.80   0.246   0.00     0.00   -80.00
+Layers 1-3 (1 tag/id)     0.2    5    0.000     0.000   0.00   1.60   0.00  0.80   0.059   0.00     0.00   -80.00
+Layers 1-4                0.0    5    0.000     0.000   0.00   0.60   0.40  0.00   0.239   0.80     0.00   -40.00
+Layers 1-4                0.2    5    0.000     0.000   0.00   0.00   1.00  0.00   0.065    nan     0.00     0.00
+Layers 1-5                0.0    5    0.000     0.000   0.00   0.60   0.40  0.00   0.239   0.80     0.00   -40.00
+Layers 1-5                0.2    5    0.000     0.000   0.00   0.00   1.00  0.00   0.065    nan     0.00     0.00
+-- loop_closure
+pipeline                  off runs corr_any corr_conf missed f_conf f_prov   dup err_med t_conf  pts P=0 pts P=40
+naive                     0.0    5    0.600     0.600   0.00   1.20   0.00  0.80   0.413   0.00    24.00   -32.00
+Layer 1                   0.0    5    0.600     0.600   0.00   1.20   0.00  0.80   0.416   0.00    24.00   -32.00
+Layer 1                   0.2    5    0.600     0.600   0.00   1.20   0.00  0.80   0.330   0.00    24.00   -32.00
+Layers 1-3 (1 tag/id)     0.0    5    0.400     0.400   0.00   1.40   0.00  0.80   0.420   0.00    16.00   -48.00
+Layers 1-3 (1 tag/id)     0.2    5    0.600     0.600   0.00   1.20   0.00  0.80   0.328   0.00    24.00   -32.00
+Layers 1-4                0.0    5    1.000     0.400   0.00   0.40   0.40  1.00   0.251   1.70    32.00     8.00
+Layers 1-4                0.2    5    1.000     1.000   0.00   0.60   0.00  1.00   0.063   1.20    40.00     0.00
+Layers 1-5                0.0    5    1.000     0.400   0.00   0.00   0.00  0.00   0.253   1.30    32.00    32.00
+Layers 1-5                0.2    5    1.000     1.000   0.00   0.00   0.00  0.00   0.068   0.80    40.00    40.00
+-- repeated_corrections
+pipeline                  off runs corr_any corr_conf missed f_conf f_prov   dup err_med t_conf  pts P=0 pts P=40
+naive                     0.0    5    1.000     1.000   0.00   1.40   0.00  0.80   0.254   0.00    40.00   -48.00
+Layer 1                   0.0    5    1.000     1.000   0.00   1.40   0.00  0.80   0.250   0.00    40.00   -48.00
+Layer 1                   0.2    5    1.000     1.000   0.00   1.40   0.00  0.80   0.067   0.00    40.00   -48.00
+Layers 1-3 (1 tag/id)     0.0    5    1.000     1.000   0.00   1.40   0.00  0.80   0.255   0.00    40.00   -48.00
+Layers 1-3 (1 tag/id)     0.2    5    1.000     1.000   0.00   1.40   0.00  0.80   0.070   0.00    40.00   -48.00
+Layers 1-4                0.0    5    1.000     0.800   0.00   0.00   0.00  0.00   0.294   0.90    40.00    40.00
+Layers 1-4                0.2    5    1.000     0.800   0.00   0.00   0.00  0.00   0.107   0.90    40.00    40.00
+Layers 1-5                0.0    5    1.000     0.800   0.00   0.00   0.00  0.00   0.240   0.90    40.00    40.00
+Layers 1-5                0.2    5    1.000     1.000   0.00   0.00   0.00  0.00   0.054   1.00    40.00    40.00
+-- double_detection
+pipeline                  off runs corr_any corr_conf missed f_conf f_prov   dup err_med t_conf  pts P=0 pts P=40
+naive                     0.0    5    1.000     1.000   0.00   1.80   0.00  6.60   0.238   0.00    40.00  -296.00
+Layer 1                   0.0    5    1.000     1.000   0.00   0.80   0.00  6.40   0.229   0.00    40.00  -248.00
+Layer 1                   0.2    5    1.000     1.000   0.00   0.80   0.00  6.60   0.036   0.00    40.00  -248.00
+Layers 1-3 (1 tag/id)     0.0    5    1.000     1.000   0.00   0.80   0.00  6.40   0.233   0.00    40.00  -248.00
+Layers 1-3 (1 tag/id)     0.2    5    1.000     1.000   0.00   0.80   0.00  6.60   0.037   0.00    40.00  -248.00
+Layers 1-4                0.0    5    1.000     0.800   0.00   0.00   0.00  0.00   0.248   0.80    40.00    40.00
+Layers 1-4                0.2    5    1.000     0.800   0.00   0.00   0.00  0.00   0.063   0.90    40.00    40.00
+Layers 1-5                0.0    5    1.000     0.800   0.00   0.00   0.00  0.00   0.248   0.80    40.00    40.00
+Layers 1-5                0.2    5    1.000     0.800   0.00   0.00   0.00  0.00   0.063   0.90    40.00    40.00
+-- two_close_survivors (8 pair types pooled)
+pipeline                  off runs corr_any corr_conf missed f_conf f_prov   dup err_med t_conf  pts P=0 pts P=40
+naive                     0.0   40    0.988     0.988   0.00   0.40   0.00  0.60   0.241   0.00    79.00    41.00
+Layer 1                   0.0   40    0.988     0.988   0.00   0.42   0.00  0.60   0.239   0.00    79.00    40.00
+Layer 1                   0.2   40    0.975     0.975   0.00   0.45   0.00  0.60   0.053   0.00    78.00    38.00
+Layers 1-3 (1 tag/id)     0.0   40    1.000     1.000   0.00   0.40   0.00  0.60   0.249   0.00    80.00    42.00
+Layers 1-3 (1 tag/id)     0.2   40    0.988     0.988   0.00   0.42   0.00  0.60   0.062   0.00    79.00    40.00
+Layers 1-4                0.0   40    1.000     0.562   0.00   0.00   0.00  0.00   0.249   0.80    68.00    68.00
+Layers 1-4                0.2   40    0.963     0.950   0.00   0.00   0.07  0.00   0.067   0.80    77.00    76.00
+Layers 1-5                0.0   40    1.000     0.562   0.00   0.00   0.00  0.00   0.249   0.80    68.00    68.00
+Layers 1-5                0.2   40    0.963     0.950   0.00   0.00   0.07  0.00   0.067   0.80    77.00    76.00

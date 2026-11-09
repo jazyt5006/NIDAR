@@ -251,6 +251,63 @@ def _eff_key(eff: EffectivePose) -> tuple:
     return (eff.revision, eff.flags, p.position_m.tobytes(), p.orientation_wxyz.tobytes())
 
 
+@dataclass
+class RebuiltState:
+    """Result of a full recompute (substep 3.4): a complete new Layer 4 plus the derived observations. Built from a
+    RebuildJob snapshot only; shares no mutable object with the live pipeline."""
+
+    l4: Layer4
+    derived: Dict[int, SurvivorObservation]
+    keys: Dict[int, tuple]
+    n_batches: int
+    n_carried: int
+    rederive_ms: float
+    replay_ms: float
+    total_ms: float
+
+
+class RebuildJob:
+    """Snapshot of everything a full recompute reads, taken on the pipeline's own thread by Layer5Pipeline
+    (_snapshot). run() may be called on ANY thread, once: it reads only the snapshot (stored observation records are
+    frozen; the effective poses were resolved at snapshot time; the evicted-observation copies, the registration and the
+    Layer 4 parameters are immutable or private copies) and the pipeline's read-only configuration, and it writes only
+    objects it creates. The result is installed with Layer5Pipeline.complete_rebuild(job) on the pipeline's thread
+    (the atomic swap); if another rebuild was started meanwhile the result is stale and is discarded."""
+
+    def __init__(self, cause: str, arrival_ns: int, epoch: int, batch_cut: int, grid: GridRegistration,
+                 l4_params: Layer4Params, carried: List[Tuple[int, SurvivorObservation]],
+                 items: List[Tuple[StoredObservation, EffectivePose]], derive: Callable):
+        self.cause, self.arrival_ns, self.epoch, self.batch_cut = cause, arrival_ns, epoch, batch_cut
+        self.grid, self.l4_params, self.carried, self.items = grid, l4_params, carried, items
+        self._derive = derive
+        self.state: Optional[RebuiltState] = None
+        self.error: Optional[BaseException] = None
+
+    def run(self) -> RebuiltState:
+        t0 = time.perf_counter()
+        try:
+            batches: Dict[int, List[SurvivorObservation]] = {}
+            keys: Dict[int, tuple] = {}
+            for b, copy_obs in self.carried:
+                batches.setdefault(b, []).append(copy_obs)
+            derived: Dict[int, SurvivorObservation] = {}
+            for rec, eff in self.items:
+                obs = self._derive(rec, eff, self.grid)
+                derived[rec.observation_id], keys[rec.observation_id] = obs, _eff_key(eff)
+                batches.setdefault(rec.batch, []).append(obs)
+            t1 = time.perf_counter()
+            l4 = Layer4(self.l4_params, self.grid)
+            for b in sorted(batches):
+                l4.update(batches[b])
+            t2 = time.perf_counter()
+            self.state = RebuiltState(l4, derived, keys, len(batches), len(self.carried), (t1 - t0) * 1e3,
+                                      (t2 - t1) * 1e3, (time.perf_counter() - t0) * 1e3)
+            return self.state
+        except BaseException as exc:  # noqa: BLE001 - re-raised to the caller, also kept for a worker thread
+            self.error = exc
+            raise
+
+
 class Layer5Pipeline(Layer1234Pipeline):
     """Layers 1-5. Every accepted observation is stored (corrections.StoredObservation). A correction event or a
     registration update re-derives every stored observation (Layer 2 from the effective capture-time pose, Layer 3
@@ -281,6 +338,10 @@ class Layer5Pipeline(Layer1234Pipeline):
         self._published: List[PublishedTag] = []
         self._dirty = True
         self._cause = "layer4"
+        # Substep 3.4: if set, full recomputes are not run inline: a RebuildJob is handed to job_sink(job) (the caller
+        # runs job.run() on a worker thread and then calls complete_rebuild(job) on this pipeline's thread).
+        self.job_sink: Optional[Callable[["RebuildJob"], None]] = None
+        self._epoch = 0  # number of rebuilds started; a job whose epoch is not the latest is stale
 
     # --- inputs -------------------------------------------------------------------------------------------
     def process_pose(self, pose: PoseSample, arrival_ns: int) -> None:
@@ -426,7 +487,8 @@ class Layer5Pipeline(Layer1234Pipeline):
                 self.corrections.bake_excess(self.store)
                 self._rebuild(f"missing correction r{rev}", now_ns)
 
-    def _rederive(self, rec: StoredObservation, eff: EffectivePose) -> SurvivorObservation:
+    def _rederive(self, rec: StoredObservation, eff: EffectivePose,
+                  grid: Optional[GridRegistration] = None) -> SurvivorObservation:
         """Layers 2 and 3 from the stored camera-frame measurement and the effective pose (same calls, same order as
         the live path in _resolve, plus the Layer 5 covariance inflation)."""
         obs = rec.fresh()
@@ -441,7 +503,7 @@ class Layer5Pipeline(Layer1234Pipeline):
             obs.cov_map_m2 = obs.cov_map_m2 * factor
         if self.footprint is not None:
             refine_observation(obs, pose_matrix(eff.lookup.pose) @ self.l2.extrinsic.T_body_camera, self.footprint)
-        apply_grid(obs, self.grid, self.max_cells)
+        apply_grid(obs, self.grid if grid is None else grid, self.max_cells)
         return obs
 
     def _carry_copy(self, old: SurvivorObservation) -> SurvivorObservation:
@@ -457,36 +519,61 @@ class Layer5Pipeline(Layer1234Pipeline):
         self._carried = {k: v for k, v in self._carried.items() if k in tracked}
 
     def _rebuild(self, cause: str, arrival_ns: int) -> None:
+        self._epoch += 1  # any job still in flight is now stale
         if self.l5.recompute_mode == "affected_tracks" and not cause.startswith("registration"):
-            self._rebuild_affected(cause, arrival_ns)
+            self._rebuild_affected(cause, arrival_ns)  # always inline (approximate mode)
+        elif self.job_sink is not None:
+            self.job_sink(self._snapshot(cause, arrival_ns))
         else:
-            self._rebuild_full(cause, arrival_ns)
+            job = self._snapshot(cause, arrival_ns)
+            job.run()
+            self._install(job, catch_up=False)
 
-    def _rebuild_full(self, cause: str, arrival_ns: int) -> None:
-        t0 = time.perf_counter()
-        batches: Dict[int, List[SurvivorObservation]] = {}
-        keys: Dict[int, tuple] = {}
-        for oid in sorted(self._carried):
-            b, old = self._carried[oid]
-            batches.setdefault(b, []).append(self._carry_copy(old))
-        derived: Dict[int, SurvivorObservation] = {}
-        for rec in self.store:
-            eff = self.corrections.effective(rec)
-            obs = self._rederive(rec, eff)
-            derived[rec.observation_id], keys[rec.observation_id] = obs, _eff_key(eff)
-            batches.setdefault(rec.batch, []).append(obs)
-        t1 = time.perf_counter()
-        l4 = Layer4(self.l4.p, self.grid)
-        for b in sorted(batches):
-            l4.update(batches[b])
-        t2 = time.perf_counter()
+    def _snapshot(self, cause: str, arrival_ns: int) -> RebuildJob:
+        """Take the inputs of a full recompute (pipeline thread). Costs one effective-pose resolution per stored
+        observation plus a copy of each carried observation; no Layer 2-4 work."""
+        carried = [(self._carried[oid][0], self._carry_copy(self._carried[oid][1])) for oid in sorted(self._carried)]
+        events = self.corrections.sorted_events()
+        items = [(rec, self.corrections.effective(rec, events)) for rec in self.store]
+        return RebuildJob(cause, arrival_ns, self._epoch, self._batch_no, self.grid, self.l4.p, carried, items,
+                          self._rederive)
+
+    def complete_rebuild(self, job: RebuildJob) -> bool:
+        """Install the result of job.run() (pipeline thread): the atomic swap of Layer 4, the derived observations and
+        the tag book. Returns False, changing nothing, if the job is stale (a newer rebuild was started) or not run.
+        Observations accepted after the snapshot are replayed into the new state in their original batches first, so
+        the result equals a synchronous recompute followed by those observations (limit: observations evicted from
+        the store between snapshot and completion are not replayed)."""
+        if job.state is None or job.epoch != self._epoch:
+            return False
+        self._flush()  # pending observations go to the old state, which is replaced below
+        self._install(job, catch_up=True)
+        return True
+
+    def _install(self, job: RebuildJob, catch_up: bool) -> None:
+        st = job.state
+        l4, derived, keys = st.l4, st.derived, st.keys
+        if catch_up:
+            late: Dict[int, List[SurvivorObservation]] = {}
+            events = self.corrections.sorted_events()
+            for rec in self.store:
+                if rec.batch >= job.batch_cut:
+                    eff = self.corrections.effective(rec, events)
+                    obs = self._rederive(rec, eff)
+                    derived[rec.observation_id], keys[rec.observation_id] = obs, _eff_key(eff)
+                    late.setdefault(rec.batch, []).append(obs)
+            for b in sorted(late):
+                l4.update(late[b])
+            for rec, _ in job.items:  # evicted from the store since the snapshot: keep their derivation as carried
+                if rec.observation_id not in self.store and rec.observation_id in derived:
+                    self._carried[rec.observation_id] = (rec.batch, derived.pop(rec.observation_id))
+                    keys.pop(rec.observation_id, None)
         self.book.remap(self.l4.tracks, l4.tracks)
         self.l4, self.derived, self._keys = l4, derived, keys
         self._prune_carried()
-        self._dirty, self._cause = True, cause
-        self.recomputes.append(RecomputeStat(arrival_ns, cause, len(derived), sum(len(v) for v in batches.values())
-                                             - len(derived), len(batches), (t1 - t0) * 1e3, (t2 - t1) * 1e3,
-                                             (time.perf_counter() - t0) * 1e3, "full", -1))
+        self._dirty, self._cause = True, job.cause
+        self.recomputes.append(RecomputeStat(job.arrival_ns, job.cause, len(job.items), st.n_carried, st.n_batches,
+                                             st.rederive_ms, st.replay_ms, st.total_ms, "full", -1))
 
     def _rebuild_affected(self, cause: str, arrival_ns: int) -> None:
         """l5.recompute_mode = affected_tracks (R3 remedy). Observations whose effective pose changed are

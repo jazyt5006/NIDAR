@@ -75,3 +75,17 @@ Unknown hardware or competition values are either a config parameter that ships 
 or a question in `teammate_questions.md`. Never a constant in code. A stage with an unset required parameter reports
 `CONFIG_MISSING` and must not produce CONFIRMED tags. Tuning defaults are labelled ASSUMPTION and must be validated
 experimentally.
+
+## Corrections and revisions (Layer 5, substep 3.2)
+- `pose_revision` (int) increases when SLAM re-optimises; a pose is "uncorrected" for an event if its revision did not
+  reach the event's revision. A history correction names the time range it re-optimised; the frame correction covers
+  [previous correction stamp, event stamp) (half-open, in the pose clock) and is exact only at its end.
+- `map_revision` counts applied correction events; `registration_version` counts grid registrations. Both are sent as
+  their low byte (u8) in telemetry; the survivor id and tag revision likewise.
+- A correction never replaces data in place: stored observations are re-derived from their capture-time pose and the
+  current registration. Two events for the same revision with different content are CORRECTION_CONFLICT.
+
+## Score points used in evaluation tables
+Points per run = 40 x (correct committed tags) - P x (other committed tags). 40 is rulebook p.19; P is ASSUMED (O2) and
+always shown as a column or in the heading. "Committed" means output by the end-of-mission policy, never every
+intermediate tag.
