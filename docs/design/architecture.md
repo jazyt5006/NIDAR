@@ -576,3 +576,45 @@ scenario-length artifact (1 of 65 at offset 0.0, 1 of 55 at offset 0.2). The dom
 below 0.9 (45/65, 52/55), and 40/45 and 49/52 of those have the fused estimate within 0.15 m of a cell edge: from one
 viewpoint the ray-bias floor (sigma about 0.1 m) cannot support p >= 0.9 that close to an edge. At offset 0.0 another
 16 are confirmed in the wrong cell (the uncorrected 0.25 m front-surface bias).
+
+---
+
+## Substep 3.1c: honest cell probabilities, expected-value commit policy
+
+Status: unit tested and simulation tested on synthetic data only. All calibration must be redone on recorded data in
+Step 5.
+
+**Bias-uncertainty model.** Layer 4's per-view-bin common-mode term along the camera ray uses
+`ray_sigma = sqrt(l4.ray_bias_sigma_m^2 + l1.body_depth_offset_sigma_m^2)` (`Layer4Params.ray_sigma_m`), both in the
+association innovation and in the bin fusion. Who does what (no double counting):
+- `l1.body_depth_offset_m`: the correction applied in Layer 1 (0.0 until measured).
+- `l1.body_depth_offset_sigma_m` (ASSUMPTION 0.10 m): uncertainty of that correction only (true front-surface bias
+  minus the configured offset). Shrink it only when the offset is measured on real bodies (Step 5).
+- `l4.ray_bias_sigma_m` (0.10 m): every other common-mode ray error (pose, extrinsic, depth scale, surface shape).
+- `l4.obs_model_sigma_m` (0.05 m): isotropic frame-to-frame variation, averaged within a bin up to
+  `l4.max_effective_obs_per_bin`.
+With `l1.body_depth_offset_sigma_m = 0` the behaviour is exactly the pre-3.1c one (tested). The new default 0.10 m
+changes the Layer 4 default output (effective sigma 0.141 m instead of 0.10 m); `experiments.py` pins the 3.1b values.
+
+**Calibration method.** `calibration.py` (library): equal-width reliability table, ECE, over-confidence flags.
+`experiments_calib.py` (harness): per-update samples of matched tracks; 60 settings (floor {0.05..0.20} x offset sigma
+{0..0.20} x obs model {0.03, 0.05, 0.08}) x configured offset {0, 0.1, 0.2, 0.3} x true model {fixed, uniform depth
+0.2-0.5 m}; Layers 1-3 cached, Layer 4 replayed; 796 s on the dev laptop (11 processes).
+
+**Decision (pre-registered rule; FAIL).** No setting was ACCEPTABLE on seeds 0-2 (ECE(p >= 0.5) <= 0.05 and no bin with
+>= 20 samples over-confident by > 0.10, in all four combinations with |offset - true mean bias| <= 0.1 m). Best by
+summed shortfall: floor 0.05, offset sigma 0.10, obs model 0.08 (effective 0.112 m); seeds 0-2: ECE 0.045 / 0.057 /
+0.081 / 0.092, worst over-confidence +0.127 / +0.123 / -0.019 / -0.018; held-out seeds 3-7: ECE 0.040 / 0.061 / 0.070 /
+0.059, worst over-confidence +0.149 / +0.209 / +0.027 / -0.026: FAIL. Miscalibration goes both ways (over-confident
+around p 0.6-0.9, under-confident above 0.9 when the offset is close), so no single isotropic or ray sigma fixes it;
+a wrong offset (0.0 configured, true 0.25) gives +0.45 over-confidence that a 0.10 m offset sigma cannot cover.
+Defaults NOT changed by the sweep (floor 0.10, offset sigma 0.10 as specified, obs model 0.05).
+
+**Final-tag policy `expected_value`** (`Layer4.final_tag_set`): every track that is not UNRELIABLE with at least
+`l5.commit_min_obs` (ASSUMPTION 3) observations is committed to its top cell if p_top >= P / (40 + P), P =
+`score.wrong_tag_penalty_assumed` (unset -> 0.5 with a "penalty unknown" note; 40 = `score.correct_tag_points`, rulebook
+p.19). For P < 40, 0.5 is conservative; for P > 40 it over-commits. Simulation: expected_value(0.5) scores at least as
+well as confirmed_only for P <= 40 in all four offset/model cases, but the formula threshold was the best of the tested
+thresholds only at P = 0 and P = 80 (and P = 60 in two cases); for P = 20-40 a higher threshold (0.5-0.67) was better,
+consistent with the measured over-confidence. confirm_prob stays 0.9 (pre-set rule: 0.7 scores more whenever the
+offset is right, but less at offset 0.0 and P = 80).

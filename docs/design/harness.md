@@ -105,6 +105,21 @@ other. `format_diag` prints per scenario: counts per label, accepted observation
 top probability and edge distance of the prob_below cases. `summary.statuses` counts final track statuses plus
 DROPPED_TIMEOUT / MERGED / EVICTED. min_obs and span are scenario-length artifacts; the others are not.
 
+### Calibration metrics (substep 3.1c, `calibration.py` + `experiments_calib.py`)
+- Samples: after every Layer 4 update, each track that received an observation and lies within 1 m of a true survivor
+  gives (top-cell probability, top cell == true cell). Pool excludes loop_closure (needs Layer 5) and prone (reported
+  separately).
+- `reliability_table(pred, correct, bins=10)`: equal-width bins (p = 1 in the last bin); `ece(..., p_min=0.5)`: sum of
+  (bin count / total) x |mean predicted - observed|, total = samples with p >= p_min; `over_confidence_flags` /
+  `worst_over_confidence`: bins with >= 20 samples whose mean predicted exceeds observed by more than 0.10. These are
+  library functions, reusable on recorded data (Step 5).
+- True body-depth models (`scenarios.BODY_DEPTH_MODELS`): "fixed" (default, 0.5 m box depth, bias 0.25 m) and
+  "uniform_0.2_0.5" (per-survivor depth from its own random stream, bias 0.10-0.25 m, mean 0.175 m). The pipeline
+  never sees it.
+- Layers 1-3 are cached per (configured offset, true model, scenario, seed) and only Layer 4 is replayed
+  (`CachePipeline`, `replay`; a test checks a replay equals `Layer1234Pipeline`).
+- Policy points: +40 per correct tag (rulebook) and -P per wrong, duplicate or false-positive committed tag (P ASSUMED).
+
 ### Observation-level metrics (pipelines exposing `observations()`)
 `score_observations(placed, frames, observations)`: every processed detection of a real survivor (linked by capture
 stamp and detection_id): **accept** rate, **correct** cell rate among accepted observations, horizontal map-frame

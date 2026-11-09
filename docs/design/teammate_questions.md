@@ -135,3 +135,11 @@ degrees?). Is there a CAD drawing or measurement?**
 tags in one cell allowed?**
 - Why: decides whether two nearby tracks stay two tags or are combined into one cell tag at the end of the mission.
 - Default ASSUMPTION: one tag per survivor (two tracks stay two tags, even in the same cell).
+
+**O7. Please confirm exactly how these are scored (refines O2 and O5): (a) a tag in the wrong cell, (b) an extra tag
+for a survivor that is already correctly tagged, (c) a tag where there is no survivor; and (d) for a lying survivor
+spanning two cells, is the cell decided by the body centre, the head or the torso?**
+- Why: the expected-value commit threshold is P / (40 + P) with P the penalty per wrong/extra tag (substep 3.1c). With
+  P unknown we use 0.5, which is right only if P = 40. (d) decides which point Layer 1 must estimate for prone bodies.
+- Default ASSUMPTION: `score.wrong_tag_penalty_assumed` unset (threshold 0.5, the result carries a "penalty unknown"
+  note); (a), (b), (c) assumed to cost the same; (d) body centre (O5).

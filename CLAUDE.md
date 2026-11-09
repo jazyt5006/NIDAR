@@ -14,25 +14,41 @@ detection + depth -> 3D position -> SLAM map frame -> official NIDAR grid cell -
 - Rules: `docs/reference/NIDAR 26-27 - Rulebook.pdf` (page refs below are the printed "Page N of 25" numbers; AirMouse
   rules 8.20-8.31 on pp.12-13, AirMouse scoring p.19, penalties p.20) and `docs/reference/Mission Brief - NIDAR AirMouse.pdf`.
 - Design: `docs/design/architecture.md`, `docs/design/conventions.md` (frames, time, units), `docs/design/teammate_questions.md`.
-- Code so far: `types.py` (data types, FailureReason, TagStatus), `config.py` (parameter registry, JSON loader),
-  `output.py` (telemetry codec only). Test config: `configs/example_synthetic.json` (TEST VALUES ONLY).
-- Test world: `sim.py`, `scenarios.py`, `harness.py` (Pipeline protocol + scoring), `baseline.py` (NaivePipeline
-  control, never reuse). See `docs/design/harness.md`. Harness results are SIMULATION tested only.
-- Layer 1: `geometry.py` (`estimate_survivor_point`; density clustering, spatial occluder/strip rule, point
-  methods median_pixel / cluster_centroid, BBOX_TRUNCATED). Evaluation script: `experiments.py`.
+- Module map (purpose, public API, invariants, import bans, test files, commands): `docs/design/CODEMAP.md`.
+  Library: `types`, `config`, `geometry` (L1), `transforms` (L2), `grid` (L3), `tracking` (L4), `footprint`,
+  `calibration`, `output` (telemetry codec), `pipeline`. Harness side: `sim`, `scenarios`, `harness`, `baseline`
+  (NaivePipeline control, never reuse), `sim_pipelines`, `diagnostics`, `experiments` (3.1b), `experiments_calib`
+  (3.1c). Harness results are SIMULATION tested only. Test config: `configs/example_synthetic.json` (TEST VALUES ONLY).
 - `l1.body_depth_offset_m` stays 0.0 until measured on real bodies (Step 5); never set it from simulator results.
-- Layer 2: `transforms.py` (pose buffer, capture-time interpolation, pending queue, covariance). Layer 3: `grid.py`
-  (registration, cells, probabilities, fit). `pipeline.py`: Layer123Pipeline (Config only, no simulator imports).
-  `sim_pipelines.py`: scenario -> Config glue for the harness. Library layers never import sim/scenarios/baseline.
-- Layer 4: `tracking.py` (association, de-correlated fusion, status machine, merges, bounded memory);
-  `pipeline.Layer1234Pipeline`. End-of-mission policy (`final_tags`) stays configurable until O2 is answered.
 - Pipeline order: capture-time pose -> floor plane -> Layer 1 -> camera-to-map -> footprint -> Layer 3 -> Layer 4.
-  Floor removal (`l1.floor_removal`, needs `map.floor_z_m`) and footprint refinement (`footprint.py`,
-  `l1b.footprint_refinement`) exist but are OFF by default: both failed their pre-set decision rules (3.1b).
-- `diagnostics.py`: why survivors are not confirmed (harness side).
+  Floor removal (`l1.floor_removal`, needs `map.floor_z_m`) and footprint refinement (`l1b.footprint_refinement`) are
+  OFF by default: both failed their pre-set decision rules (3.1b).
+- Layer 4 ray sigma = sqrt(`l4.ray_bias_sigma_m`^2 + `l1.body_depth_offset_sigma_m`^2). End-of-mission policy
+  (`final_tags`) stays configurable until O2 is answered; `expected_value` threshold P/(40+P), P =
+  `score.wrong_tag_penalty_assumed` (unset = 0.5 + note). 3.1c calibration sweep FAILED its rule; redo in Step 5.
 - Five-layer architecture is FIXED: (1) robust survivor geometry, (2) time-aligned coordinate transformation, (3) NIDAR grid
   registration, (4) temporal consistency and uncertainty, (5) correction handling and live map output.
   Changing it needs a written technical reason and my approval.
+
+## Standing rules
+- Start every task by reading CLAUDE.md and `docs/design/CODEMAP.md`, then only the files you will change or that
+  directly depend on them. Read spec sections only when the task names them.
+- Python 3.10+, numpy only, seeded randomness. Library code must not import sim, scenarios, baseline or harness.
+- Never invent hardware or competition values. New tuning defaults are labelled ASSUMPTION and listed in the report.
+  Unknowns stay configurable.
+- Never weaken or skip a test. During development run only the affected tests; run the full suite once at the end.
+- Do not commit unless asked.
+- Evaluations: cache expensive intermediate results; print only summary tables to the terminal; save detailed output
+  under `docs/reports/` (not a temp folder).
+- Update `docs/design/*.md` only at the end of a step (when the task says so). In between, append a few lines per task
+  to `docs/reports/NOTES.md` (decisions, new parameters, deviations).
+- Do not re-run the full evaluation or the full test suite after the final successful run unless code changed since.
+- Include only the tables the task asks for in the report.
+- If the context was compacted, check git status and the report files first instead of re-running everything.
+- Reporting: write the full report to `docs/reports/<task id>.md` using `docs/reports/TEMPLATE.md`. In chat print only:
+  a one-line PASS/FAIL, the report path, the test counts, and at most 10 lines of key numbers or decisions.
+- Decision rules given in a task are followed as written, even if the results disagree with expectations.
+- Results are labelled by evidence level: unit, simulation, Gazebo, recorded-data, hardware.
 
 ## Competition facts that constrain the design
 Verified against the PDFs in `docs/reference/` on 2026-11-08 unless marked otherwise.
@@ -93,8 +109,7 @@ Verified against the PDFs in `docs/reference/` on 2026-11-08 unless marked other
 - Inspect before modifying. Reuse existing code. Do not overwrite working modules.
 - Ask first before: adding dependencies, installing anything, changing build files, touching files outside this repo,
   committing, git push or force operations, deleting or moving files.
-- After every substep report: task number; files created or modified; functionality; dependencies added; tests run and
-  results; known limitations; remaining assumptions; next task recommendation.
+- Every substep report also states: functionality, dependencies added, tests run (see Standing rules: Reporting).
 - Keep README, architecture, interface, configuration and test docs current. Record every assumption.
 
 ## Build, test, run
@@ -103,6 +118,7 @@ Verified on dev machine (Windows, Git Bash, Python 3.13.5, numpy 2.4.2, pytest 9
 - `PYTHONPATH=src python -c "import survivor_tagging"`
 - `PYTHONPATH=src python -m survivor_tagging.harness`  (naive baseline, all scenarios x 5 seeds, ~17 s on dev laptop)
 - `PYTHONPATH=src python -m survivor_tagging.experiments`  (substep 3.1b tables, ~215 s on dev laptop)
+- `PYTHONPATH=src python -m survivor_tagging.experiments_calib`  (substep 3.1c, ~800 s, 11 processes)
 Not verified on Python 3.10/3.11 or on the Pi.
 
 ## Frames, topics, messages

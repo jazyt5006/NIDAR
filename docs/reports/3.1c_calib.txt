@@ -1,0 +1,202 @@
+SIMULATION tested on synthetic data. Layers 1-3 cached: 1280 runs (20 scenarios x 8 seeds x 4 offsets x 2 models) in 456 s with 11 worker processes
+
+Decision-rule combinations (|offset - true mean bias| <= 0.1 m): [(0.1, 'uniform_0.2_0.5'), (0.2, 'fixed'), (0.2, 'uniform_0.2_0.5'), (0.3, 'fixed')]
+
+== C. Calibration sweep, seeds 0-2 (60 settings x 8 combos; 273 s) ==
+rule = worst over rule combos; all = worst over all 8 combos (incl. offsets far from the truth)
+ floor  osig   obs    eff ECE_rule over_rule cc_rule fc_rule ECE_all over_all cc_all fc_all  acceptable
+  0.05  0.00  0.03  0.050    0.089    +0.347   0.571    0.04   0.275   +0.570  0.508   0.26  no
+  0.05  0.00  0.05  0.050    0.076    +0.382   0.556    0.02   0.271   +0.612  0.476   0.20  no
+  0.05  0.00  0.08  0.050    0.107    +0.346   0.508    0.00   0.258   +0.655  0.460   0.20  no
+  0.05  0.05  0.03  0.071    0.080    +0.398   0.556    0.04   0.263   +0.642  0.492   0.22  no
+  0.05  0.05  0.05  0.071    0.087    +0.360   0.524    0.00   0.267   +0.620  0.492   0.20  no
+  0.05  0.05  0.08  0.071    0.096    +0.279   0.476    0.00   0.245   +0.646  0.460   0.20  no
+  0.10  0.00  0.03  0.100    0.074    +0.262   0.492    0.02   0.243   +0.596  0.492   0.20  no
+  0.10  0.00  0.05  0.100    0.075    +0.210   0.492    0.00   0.236   +0.602  0.460   0.17  no
+  0.10  0.00  0.08  0.100    0.085    +0.137   0.429    0.00   0.228   +0.475  0.429   0.17  no
+  0.05  0.10  0.03  0.112    0.074    +0.279   0.492    0.00   0.231   +0.583  0.444   0.17  no
+  0.10  0.05  0.03  0.112    0.074    +0.279   0.492    0.00   0.231   +0.583  0.444   0.17  no
+  0.05  0.10  0.05  0.112    0.085    +0.225   0.476    0.00   0.226   +0.576  0.429   0.17  no
+  0.10  0.05  0.05  0.112    0.085    +0.225   0.476    0.00   0.226   +0.576  0.429   0.17  no
+  0.05  0.10  0.08  0.112    0.092    +0.127   0.429    0.00   0.225   +0.429  0.397   0.17  no
+  0.10  0.05  0.08  0.112    0.092    +0.127   0.429    0.00   0.225   +0.429  0.397   0.17  no
+  0.10  0.10  0.03  0.141    0.100    +0.191   0.460    0.00   0.208   +0.523  0.413   0.13  no
+  0.10  0.10  0.05  0.141    0.093    +0.155   0.444    0.00   0.206   +0.497  0.397   0.11  no
+  0.10  0.10  0.08  0.141    0.109    +0.090   0.397    0.00   0.210   +0.532  0.349   0.11  no
+  0.15  0.00  0.03  0.150    0.104    +0.145   0.444    0.00   0.202   +0.526  0.381   0.11  no
+  0.15  0.00  0.05  0.150    0.099    +0.160   0.444    0.00   0.206   +0.524  0.381   0.11  no
+  0.15  0.00  0.08  0.150    0.114    +0.095   0.381    0.00   0.211   +0.520  0.317   0.07  no
+  0.05  0.15  0.03  0.158    0.106    +0.149   0.444    0.00   0.200   +0.537  0.381   0.09  no
+  0.15  0.05  0.03  0.158    0.106    +0.149   0.444    0.00   0.200   +0.537  0.381   0.09  no
+  0.05  0.15  0.05  0.158    0.103    +0.158   0.429    0.00   0.207   +0.563  0.365   0.07  no
+  0.15  0.05  0.05  0.158    0.103    +0.158   0.429    0.00   0.207   +0.563  0.365   0.07  no
+  0.05  0.15  0.08  0.158    0.119    +0.098   0.381    0.00   0.205   +0.516  0.317   0.07  no
+  0.15  0.05  0.08  0.158    0.119    +0.098   0.381    0.00   0.205   +0.516  0.317   0.07  no
+  0.10  0.15  0.03  0.180    0.115    +0.150   0.397    0.00   0.190   +0.534  0.365   0.00  no
+  0.15  0.10  0.03  0.180    0.115    +0.150   0.397    0.00   0.190   +0.534  0.365   0.00  no
+  0.10  0.15  0.05  0.180    0.117    +0.156   0.365    0.00   0.191   +0.513  0.349   0.00  no
+  0.15  0.10  0.05  0.180    0.117    +0.156   0.365    0.00   0.191   +0.513  0.349   0.00  no
+  0.10  0.15  0.08  0.180    0.127    +0.056   0.333    0.00   0.190   +0.465  0.286   0.00  no
+  0.15  0.10  0.08  0.180    0.127    +0.056   0.333    0.00   0.190   +0.465  0.286   0.00  no
+  0.20  0.00  0.03  0.200    0.122    +0.302   0.381    0.00   0.197   +0.503  0.333   0.00  no
+  0.20  0.00  0.05  0.200    0.126    +0.118   0.333    0.00   0.196   +0.486  0.302   0.00  no
+  0.20  0.00  0.08  0.200    0.140    +0.247   0.302    0.00   0.191   +0.449  0.270   0.00  no
+  0.05  0.20  0.03  0.206    0.124    +0.302   0.365    0.00   0.198   +0.491  0.333   0.00  no
+  0.20  0.05  0.03  0.206    0.124    +0.302   0.365    0.00   0.198   +0.491  0.333   0.00  no
+  0.05  0.20  0.05  0.206    0.129    +0.102   0.333    0.00   0.194   +0.454  0.302   0.00  no
+  0.20  0.05  0.05  0.206    0.129    +0.102   0.333    0.00   0.194   +0.454  0.302   0.00  no
+  0.05  0.20  0.08  0.206    0.143    +0.247   0.302    0.00   0.189   +0.411  0.270   0.00  no
+  0.20  0.05  0.08  0.206    0.143    +0.247   0.302    0.00   0.189   +0.411  0.270   0.00  no
+  0.15  0.15  0.03  0.212    0.126    +0.303   0.349    0.00   0.192   +0.461  0.317   0.00  no
+  0.15  0.15  0.05  0.212    0.132    +0.095   0.317    0.00   0.186   +0.398  0.302   0.00  no
+  0.15  0.15  0.08  0.212    0.145    +0.255   0.302    0.00   0.184   +0.403  0.254   0.00  no
+  0.10  0.20  0.03  0.224    0.133    +0.303   0.333    0.00   0.175   +0.400  0.317   0.00  no
+  0.20  0.10  0.03  0.224    0.133    +0.303   0.333    0.00   0.175   +0.400  0.317   0.00  no
+  0.10  0.20  0.05  0.224    0.137    +0.299   0.317    0.00   0.180   +0.410  0.270   0.00  no
+  0.20  0.10  0.05  0.224    0.137    +0.299   0.317    0.00   0.180   +0.410  0.270   0.00  no
+  0.10  0.20  0.08  0.224    0.151    +0.325   0.286    0.00   0.186   +0.472  0.238   0.00  no
+  0.20  0.10  0.08  0.224    0.151    +0.325   0.286    0.00   0.186   +0.472  0.238   0.00  no
+  0.15  0.20  0.03  0.250    0.142    +0.109   0.302    0.00   0.172   +0.497  0.286   0.00  no
+  0.20  0.15  0.03  0.250    0.142    +0.109   0.302    0.00   0.172   +0.497  0.286   0.00  no
+  0.15  0.20  0.05  0.250    0.149    +0.103   0.270    0.00   0.174   +0.515  0.222   0.00  no
+  0.20  0.15  0.05  0.250    0.149    +0.103   0.270    0.00   0.174   +0.515  0.222   0.00  no
+  0.15  0.20  0.08  0.250    0.169    +0.191   0.222    0.00   0.180   +0.593  0.206   0.00  no
+  0.20  0.15  0.08  0.250    0.169    +0.191   0.222    0.00   0.180   +0.593  0.206   0.00  no
+  0.20  0.20  0.03  0.283    0.162    +0.161   0.127    0.00   0.238   +0.549  0.127   0.00  no
+  0.20  0.20  0.05  0.283    0.169    +0.072   0.127    0.00   0.243   +0.599  0.127   0.00  no
+  0.20  0.20  0.08  0.283    0.183    +0.065   0.079    0.00   0.228   +0.472  0.079   0.00  no
+
+NO ACCEPTABLE SETTING. Best (smallest summed shortfall): (0.05, 0.1, 0.08), shortfall 0.042
+Per rule combo for the chosen setting (seeds 0-2): off 0.1 uniform_0.2_0.5: ECE 0.045 over +0.127; off 0.2 fixed: ECE 0.057 over +0.123; off 0.2 uniform_0.2_0.5: ECE 0.081 over -0.019; off 0.3 fixed: ECE 0.092 over -0.018
+
+== C4. Held-out seeds 3-7, chosen setting: FAIL ==
+  offset 0.0 fixed            ECE(p>=0.5) 0.161  worst bin over +0.450  n 1510  correct CONF 0.486  false CONF/run 0.14  | prone ECE 0.145
+  offset 0.0 uniform_0.2_0.5  ECE(p>=0.5) 0.096  worst bin over +0.397  n 1513  correct CONF 0.552  false CONF/run 0.04  | prone ECE 0.145
+  offset 0.1 fixed            ECE(p>=0.5) 0.098  worst bin over +0.258  n 1509  correct CONF 0.543  false CONF/run 0.01  | prone ECE 0.237
+* offset 0.1 uniform_0.2_0.5  ECE(p>=0.5) 0.040  worst bin over +0.149  n 1512  correct CONF 0.524  false CONF/run 0.02  | prone ECE 0.237
+* offset 0.2 fixed            ECE(p>=0.5) 0.061  worst bin over +0.209  n 1510  correct CONF 0.543  false CONF/run 0.00  | prone ECE 0.223
+* offset 0.2 uniform_0.2_0.5  ECE(p>=0.5) 0.070  worst bin over +0.027  n 1511  correct CONF 0.514  false CONF/run 0.01  | prone ECE 0.223
+* offset 0.3 fixed            ECE(p>=0.5) 0.059  worst bin over -0.026  n 1509  correct CONF 0.533  false CONF/run 0.01  | prone ECE 0.150
+  offset 0.3 uniform_0.2_0.5  ECE(p>=0.5) 0.059  worst bin over +0.121  n 1508  correct CONF 0.476  false CONF/run 0.01  | prone ECE 0.150
+(* = decision-rule combination)
+
+== Reliability tables, held-out seeds 3-7, true model fixed (before = Layer 4 before 3.1c) ==
+-- offset 0.0, before: ECE(p>=0.5) 0.172, ECE(all) 0.177, n 1508
+        bin      n   pred    obs   over
+  0.0-0.1        0      -      -      -
+  0.1-0.2        0      -      -      -
+  0.2-0.3        2  0.259  0.000 +0.259
+  0.3-0.4        0      -      -      -
+  0.4-0.5       31  0.468  0.032 +0.435
+  0.5-0.6      125  0.542  0.408 +0.134
+  0.6-0.7      104  0.650  0.558 +0.093
+  0.7-0.8      116  0.753  0.569 +0.184
+  0.8-0.9      209  0.852  0.684 +0.168
+  0.9-1.0      921  0.974  0.789 +0.185
+-- offset 0.0, after: ECE(p>=0.5) 0.161, ECE(all) 0.168, n 1510
+        bin      n   pred    obs   over
+  0.0-0.1        0      -      -      -
+  0.1-0.2        0      -      -      -
+  0.2-0.3        2  0.254  0.000 +0.254
+  0.3-0.4        1  0.398  0.000 +0.398
+  0.4-0.5       32  0.450  0.000 +0.450
+  0.5-0.6      136  0.544  0.412 +0.132
+  0.6-0.7      135  0.658  0.563 +0.095
+  0.7-0.8      161  0.760  0.565 +0.195
+  0.8-0.9      230  0.853  0.670 +0.184
+  0.9-1.0      813  0.970  0.806 +0.164
+-- offset 0.2, before: ECE(p>=0.5) 0.072, ECE(all) 0.069, n 1508
+        bin      n   pred    obs   over
+  0.0-0.1        0      -      -      -
+  0.1-0.2        0      -      -      -
+  0.2-0.3        2  0.257  0.000 +0.257
+  0.3-0.4       25  0.374  0.360 +0.014
+  0.4-0.5       54  0.468  0.463 +0.005
+  0.5-0.6      155  0.562  0.471 +0.091
+  0.6-0.7      199  0.655  0.387 +0.268
+  0.7-0.8       65  0.749  0.846 -0.097
+  0.8-0.9      164  0.857  0.927 -0.069
+  0.9-1.0      844  0.979  0.999 -0.020
+-- offset 0.2, after: ECE(p>=0.5) 0.061, ECE(all) 0.062, n 1510
+        bin      n   pred    obs   over
+  0.0-0.1        0      -      -      -
+  0.1-0.2        0      -      -      -
+  0.2-0.3        2  0.252  0.000 +0.252
+  0.3-0.4       38  0.367  0.342 +0.025
+  0.4-0.5       54  0.457  0.556 -0.098
+  0.5-0.6      195  0.555  0.503 +0.053
+  0.6-0.7      167  0.652  0.443 +0.209
+  0.7-0.8       98  0.765  0.816 -0.052
+  0.8-0.9      206  0.855  0.947 -0.092
+  0.9-1.0      750  0.976  1.000 -0.024
+-- prone (excluded from the pool), offset 0.2 fixed, after:
+        bin      n   pred    obs   over
+  0.0-0.1        0      -      -      -
+  0.1-0.2        0      -      -      -
+  0.2-0.3        0      -      -      -
+  0.3-0.4        0      -      -      -
+  0.4-0.5        1  0.424  0.000 +0.424
+  0.5-0.6        9  0.581  1.000 -0.419
+  0.6-0.7        7  0.639  1.000 -0.361
+  0.7-0.8       22  0.769  1.000 -0.231
+  0.8-0.9       17  0.830  1.000 -0.170
+  0.9-1.0       12  0.942  1.000 -0.058
+
+== D. Final-tag policies (chosen setting, all 20 scenarios, seeds 0-7; +40 per correct tag and -P per wrong/extra tag, both ASSUMED for scoring O2) ==
+-- offset 0.0, true model fixed (160 runs); points per run at P = 0, 20, 40, 60, 80; correct / wrong / false-positive tags per run
+confirmed_only                       19.50   16.38   13.25   10.12    7.00   0.49 / 0.16 / 0.00
+confirmed_plus_provisional_top1      31.00   22.38   13.75    5.12   -3.50   0.78 / 0.38 / 0.05
+expected_value th=0.000              31.00   22.75   14.50    6.25   -2.00   0.78 / 0.38 / 0.03
+expected_value th=0.333              31.00   22.75   14.50    6.25   -2.00   0.78 / 0.38 / 0.03
+expected_value th=0.500              31.00   23.62   16.25    8.88    1.50   0.78 / 0.34 / 0.03
+expected_value th=0.600              30.00   23.88   17.75   11.62    5.50   0.75 / 0.28 / 0.03
+expected_value th=0.667              28.25   23.00   17.75   12.50    7.25   0.71 / 0.23 / 0.03
+best expected_value threshold per P: P=0: 0.000 (formula 0.000), P=20: 0.600 (formula 0.333), P=40: 0.600 (formula 0.500), P=60: 0.667 (formula 0.600), P=80: 0.667 (formula 0.667)
+-- offset 0.0, true model uniform_0.2_0.5 (160 runs); points per run at P = 0, 20, 40, 60, 80; correct / wrong / false-positive tags per run
+confirmed_only                       22.50   21.38   20.25   19.12   18.00   0.56 / 0.06 / 0.00
+confirmed_plus_provisional_top1      33.75   26.50   19.25   12.00    4.75   0.84 / 0.31 / 0.05
+expected_value th=0.000              33.75   26.88   20.00   13.12    6.25   0.84 / 0.31 / 0.03
+expected_value th=0.333              33.75   26.88   20.00   13.12    6.25   0.84 / 0.31 / 0.03
+expected_value th=0.500              33.50   27.38   21.25   15.12    9.00   0.84 / 0.28 / 0.03
+expected_value th=0.600              31.25   26.25   21.25   16.25   11.25   0.78 / 0.22 / 0.03
+expected_value th=0.667              29.25   24.62   20.00   15.38   10.75   0.73 / 0.20 / 0.03
+best expected_value threshold per P: P=0: 0.000 (formula 0.000), P=20: 0.500 (formula 0.333), P=40: 0.500 (formula 0.500), P=60: 0.600 (formula 0.600), P=80: 0.600 (formula 0.667)
+-- offset 0.2, true model fixed (160 runs); points per run at P = 0, 20, 40, 60, 80; correct / wrong / false-positive tags per run
+confirmed_only                       24.00   23.75   23.50   23.25   23.00   0.60 / 0.01 / 0.00
+confirmed_plus_provisional_top1      36.75   31.12   25.50   19.88   14.25   0.92 / 0.23 / 0.05
+expected_value th=0.000              36.75   31.50   26.25   21.00   15.75   0.92 / 0.23 / 0.03
+expected_value th=0.333              36.75   31.50   26.25   21.00   15.75   0.92 / 0.23 / 0.03
+expected_value th=0.500              36.50   31.88   27.25   22.62   18.00   0.91 / 0.20 / 0.03
+expected_value th=0.600              33.00   30.00   27.00   24.00   21.00   0.82 / 0.12 / 0.03
+expected_value th=0.667              32.00   31.25   30.50   29.75   29.00   0.80 / 0.04 / 0.00
+best expected_value threshold per P: P=0: 0.000 (formula 0.000), P=20: 0.500 (formula 0.333), P=40: 0.667 (formula 0.500), P=60: 0.667 (formula 0.600), P=80: 0.667 (formula 0.667)
+-- offset 0.2, true model uniform_0.2_0.5 (160 runs); points per run at P = 0, 20, 40, 60, 80; correct / wrong / false-positive tags per run
+confirmed_only                       22.50   22.12   21.75   21.38   21.00   0.56 / 0.02 / 0.00
+confirmed_plus_provisional_top1      39.50   35.00   30.50   26.00   21.50   0.99 / 0.17 / 0.05
+expected_value th=0.000              39.50   35.38   31.25   27.12   23.00   0.99 / 0.17 / 0.03
+expected_value th=0.333              39.50   35.38   31.25   27.12   23.00   0.99 / 0.17 / 0.03
+expected_value th=0.500              39.00   35.50   32.00   28.50   25.00   0.97 / 0.14 / 0.03
+expected_value th=0.600              34.75   33.00   31.25   29.50   27.75   0.87 / 0.06 / 0.03
+expected_value th=0.667              32.25   31.50   30.75   30.00   29.25   0.81 / 0.04 / 0.00
+best expected_value threshold per P: P=0: 0.000 (formula 0.000), P=20: 0.500 (formula 0.333), P=40: 0.500 (formula 0.500), P=60: 0.667 (formula 0.600), P=80: 0.667 (formula 0.667)
+
+== E. confirm_prob sweep (chosen setting, confirmed_only commit, all 20 scenarios, seeds 0-7) ==
+offset 0.0 fixed            confirm_prob 0.70: correct 0.69 wrong 0.24 fp 0.03 per run; points at P=0..80: 27.50 22.12 16.75 11.38 6.00
+offset 0.0 fixed            confirm_prob 0.80: correct 0.61 wrong 0.20 fp 0.01 per run; points at P=0..80: 24.25 20.00 15.75 11.50 7.25
+offset 0.0 fixed            confirm_prob 0.90: correct 0.49 wrong 0.16 fp 0.00 per run; points at P=0..80: 19.50 16.38 13.25 10.12 7.00
+offset 0.0 fixed            confirm_prob 0.95: correct 0.41 wrong 0.06 fp 0.00 per run; points at P=0..80: 16.25 15.00 13.75 12.50 11.25
+offset 0.0 uniform_0.2_0.5  confirm_prob 0.70: correct 0.72 wrong 0.21 fp 0.03 per run; points at P=0..80: 29.00 24.25 19.50 14.75 10.00
+offset 0.0 uniform_0.2_0.5  confirm_prob 0.80: correct 0.68 wrong 0.12 fp 0.01 per run; points at P=0..80: 27.25 24.62 22.00 19.38 16.75
+offset 0.0 uniform_0.2_0.5  confirm_prob 0.90: correct 0.56 wrong 0.06 fp 0.00 per run; points at P=0..80: 22.50 21.38 20.25 19.12 18.00
+offset 0.0 uniform_0.2_0.5  confirm_prob 0.95: correct 0.46 wrong 0.01 fp 0.00 per run; points at P=0..80: 18.50 18.25 18.00 17.75 17.50
+offset 0.2 fixed            confirm_prob 0.70: correct 0.76 wrong 0.04 fp 0.00 per run; points at P=0..80: 30.50 29.75 29.00 28.25 27.50
+offset 0.2 fixed            confirm_prob 0.80: correct 0.71 wrong 0.03 fp 0.00 per run; points at P=0..80: 28.25 27.62 27.00 26.38 25.75
+offset 0.2 fixed            confirm_prob 0.90: correct 0.60 wrong 0.01 fp 0.00 per run; points at P=0..80: 24.00 23.75 23.50 23.25 23.00
+offset 0.2 fixed            confirm_prob 0.95: correct 0.49 wrong 0.01 fp 0.00 per run; points at P=0..80: 19.50 19.38 19.25 19.12 19.00
+offset 0.2 uniform_0.2_0.5  confirm_prob 0.70: correct 0.78 wrong 0.04 fp 0.00 per run; points at P=0..80: 31.25 30.38 29.50 28.62 27.75
+offset 0.2 uniform_0.2_0.5  confirm_prob 0.80: correct 0.70 wrong 0.02 fp 0.00 per run; points at P=0..80: 28.00 27.62 27.25 26.88 26.50
+offset 0.2 uniform_0.2_0.5  confirm_prob 0.90: correct 0.56 wrong 0.02 fp 0.00 per run; points at P=0..80: 22.50 22.12 21.75 21.38 21.00
+offset 0.2 uniform_0.2_0.5  confirm_prob 0.95: correct 0.45 wrong 0.01 fp 0.00 per run; points at P=0..80: 18.00 17.75 17.50 17.25 17.00
+confirm_prob decision: keep 0.9 (rule in module docstring)
+
+total 796 s (Python 3.13.5)
