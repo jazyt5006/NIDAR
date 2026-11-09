@@ -212,6 +212,7 @@ class PoseLookup:
     alpha: Optional[float] = None
     revision: Optional[int] = None
     warnings: Tuple[FailureReason, ...] = ()
+    min_revision: Optional[int] = None  # lower of the two bracketing pose revisions (Layer 5: mixed = not corrected)
 
 
 def interpolate_pose(p0: PoseSample, p1: PoseSample, t_ns: int) -> Tuple[PoseSample, float]:
@@ -293,13 +294,34 @@ class PoseBuffer:
             i = bisect.bisect_left(self._stamps, t_ns)
             if self._stamps[i] == t_ns:
                 p = self._poses[i]
-                return PoseLookup(p, None, (p.stamp_ns, p.stamp_ns), 0.0, p.pose_revision)
+                return PoseLookup(p, None, (p.stamp_ns, p.stamp_ns), 0.0, p.pose_revision, (), p.pose_revision)
             p0, p1 = self._poses[i - 1], self._poses[i]
             if p1.stamp_ns - p0.stamp_ns > max_gap_ns:
                 return PoseLookup(None, FailureReason.POSE_GAP_TOO_LARGE)
         pose, alpha = interpolate_pose(p0, p1, t_ns)
         warn = (FailureReason.SLAM_CORRECTION_APPLIED,) if p0.pose_revision != p1.pose_revision else ()
-        return PoseLookup(pose, None, (p0.stamp_ns, p1.stamp_ns), alpha, pose.pose_revision, warn)
+        return PoseLookup(pose, None, (p0.stamp_ns, p1.stamp_ns), alpha, pose.pose_revision, warn,
+                          min(p0.pose_revision, p1.pose_revision))
+
+    def poses(self) -> List[PoseSample]:
+        """Stored poses, oldest first (a copy of the list; the samples themselves are immutable)."""
+        return list(self._poses)
+
+
+def apply_frame_jump(pose: PoseSample, t_new_old: np.ndarray, revision: int) -> PoseSample:
+    """Pose expressed in a corrected map frame: T_new_body = T_new_old @ T_old_body (Layer 5 frame_correction).
+    The covariance is rotated into the new frame (translation and rotation blocks); the caller inflates it."""
+    r = np.asarray(t_new_old, dtype=float)[:3, :3]
+    t = apply_transform(np.asarray(t_new_old, dtype=float), pose.position_m)
+    q = matrix_to_quat(r @ quat_to_matrix(pose.orientation_wxyz))
+    cov = None
+    if pose.covariance is not None:
+        j = np.zeros((6, 6))
+        j[:3, :3] = r
+        j[3:, 3:] = r
+        cov = j @ pose.covariance @ j.T
+    return PoseSample(pose.stamp_ns, pose.clock_domain, pose.frame_id, pose.child_frame_id, t, q, pose.valid, revision,
+                      pose.source + "+frame_correction", cov)
 
 
 # ---------------------------------------------------------------------------

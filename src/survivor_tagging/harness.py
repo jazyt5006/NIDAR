@@ -1,7 +1,9 @@
 """Scenario runner and scoring (docs/design/harness.md).
 
 A pipeline receives poses and frames in arrival order through the Pipeline protocol and returns its tags from
-finalize(). Scoring compares tags with simulator ground truth. A point estimator (Layer 1 candidate) can also be
+finalize(). Optional methods: process_correction(PoseCorrection, arrival_ns) and
+process_registration_event(sim.RegistrationUpdate, arrival_ns) (substep 3.2); pipelines without them ignore those
+events. Scoring compares tags with simulator ground truth. A point estimator (Layer 1 candidate) can also be
 scored on its own in the camera frame, independently of poses, transforms and the grid.
 All results are SIMULATION tested on synthetic data.
 """
@@ -159,9 +161,17 @@ def run_events(placed: Scenario, events: Sequence[Event], pipeline: Pipeline, se
     for ev in events:
         if ev.kind == "pose":
             pipeline.process_pose(ev.payload, ev.arrival_ns)
-        else:
+        elif ev.kind == "frame":
             fr: Frame = ev.payload
             pipeline.process_frame(fr.detections, fr.depth, fr.intrinsics, ev.arrival_ns)
+        elif ev.kind == "correction":  # pipelines without Layer 5 ignore corrections (the "before Layer 5" case)
+            if hasattr(pipeline, "process_correction"):
+                pipeline.process_correction(ev.payload, ev.arrival_ns)
+        elif ev.kind == "registration":
+            if hasattr(pipeline, "process_registration_event"):
+                pipeline.process_registration_event(ev.payload, ev.arrival_ns)
+        else:
+            raise ValueError(f"unknown event kind {ev.kind!r}")
     tags = pipeline.finalize()
     first = first_detection_ns(e.payload for e in events if e.kind == "frame")
     return ScenarioResult(placed.name, seed, score_tags(placed.truths(), tags, first_seen_ns=first), tags,
@@ -487,10 +497,10 @@ def format_camera_table(rows: Sequence[CameraRow]) -> str:
 
 def main() -> None:  # pragma: no cover
     from .baseline import naive_factory
-    from .scenarios import all_scenarios
+    from .scenarios import pre_32_scenarios
 
     t = time.perf_counter()
-    rows = evaluate(naive_factory, all_scenarios().values(), seeds=range(5))
+    rows = evaluate(naive_factory, pre_32_scenarios().values(), seeds=range(5))
     print("NaivePipeline, SIMULATION tested on synthetic data, 5 seeds per scenario")
     print(format_table(rows))
     print(f"evaluation time: {time.perf_counter() - t:.1f} s")

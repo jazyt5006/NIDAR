@@ -1,0 +1,71 @@
+Substep 3.2 evaluation. SIMULATION tested on synthetic data; seeds 0-4.
+
+F1. Before (Layers 1-4) vs after (Layers 1-5). correct = survivors whose matched tag has the true cell; UPDATED = tag revisions per run;
+    t_fix = time from the correction / registration event to the GCS (decoded telemetry) holding the true cell, for survivors it did not hold before the event.
+scenario               pipe correct dup/run err_med UPDATED t_fix_med_s  fixed unfixed recomp_ms
+------------------------------------------------------------------------------------------------
+loop_closure           L1-4    1.00    0.80   0.251       -           -      -       -         -
+loop_closure           L1-5    0.80    0.00   0.251    0.20        0.00      4       0      10.9
+loop_closure_late      L1-4    0.60    0.00   0.524       -           -      -       -         -
+loop_closure_late      L1-5    0.80    0.00   0.230    0.00        0.00      1       1      31.4
+repeated_corrections   L1-4    0.80    0.20   0.294       -           -      -       -         -
+repeated_corrections   L1-5    1.00    0.60   0.251    0.00         nan      0       0      31.0
+partial_history        L1-4    1.00    1.00   0.250       -           -      -       -         -
+partial_history        L1-5    1.00    0.00   0.253    0.00        0.00      1       0      22.4
+registration_update    L1-4    0.20    0.00   0.244       -           -      -       -         -
+registration_update    L1-5    0.80    0.00   0.244    0.40        0.00      3       1       9.4
+
+R1. Offline equivalence (scenarios with fully corrected history, every correction event and the end).
+    full mode: 35/35 comparisons equal, worst position difference 0.00e+00 m -> PASS
+    (affected_tracks mode, information only: 33/35 equal, worst inf m)
+
+R2. loop_closure: duplicates/run 0.00 (<= 0.1); pre-closure observation median 0.253 m (before Layer 5 0.430 m) vs post-closure 0.251 m + 0.03 -> PASS  (n_pre 28, n_post 34)
+
+R3. Recompute time vs stored observations (laptop wall clock, median of 3 deep copies; default limits except the store size).
+R3 bench stream: 2576 detections over 250 s, generated in 80 s
+  N=250   full             whole          median   5740.7 ms  (store 250, evicted 2308, tracks 17; re-derived 250, carried 2308, tracks replayed all, re-derive 179 ms, Layer 4 5502 ms)
+  N=500   full             whole          median   8444.9 ms  (store 500, evicted 2058, tracks 17; re-derived 500, carried 2058, tracks replayed all, re-derive 465 ms, Layer 4 8645 ms)
+  N=1000  full             whole          median  11943.0 ms  (store 1000, evicted 1558, tracks 17; re-derived 1000, carried 1558, tracks replayed all, re-derive 1278 ms, Layer 4 12957 ms)
+  N=2000  full             whole          median  12826.3 ms  (store 2000, evicted 558, tracks 17; re-derived 2000, carried 558, tracks replayed all, re-derive 1751 ms, Layer 4 11073 ms)
+  N=2000  affected_tracks  whole          median  10318.5 ms  (store 2000, evicted 558, tracks 17; re-derived 1998, carried 138, tracks replayed 17, re-derive 1699 ms, Layer 4 8619 ms)
+  N=2000  full             frame_last_4s  median  11877.1 ms  (store 2000, evicted 558, tracks 17; re-derived 2000, carried 141, tracks replayed all, re-derive 4103 ms, Layer 4 7256 ms)
+  N=2000  affected_tracks  frame_last_4s  median    517.6 ms  (store 2000, evicted 558, tracks 17; re-derived 38, carried 0, tracks replayed 4, re-derive 209 ms, Layer 4 294 ms)
+ stored N (max)   full, whole history (ms)
+------------------------------------------
+            250                     5740.7
+            500                     8444.9
+           1000                    11943.0
+           2000                    12826.3
+    R3 (full, N=2000, whole history): 12826 ms vs 250 ms -> FAIL
+    re-measure N=2000: affected_tracks whole history 10319 ms; frame correction of the last 4 s: full 11877 ms, affected_tracks 518 ms
+
+F3. History vs frame_correction (Layers 1-5). pre_obs = horizontal error of observations captured before the first closure, after re-derivation.
+scenario                         source correct dup/run tag_err_med pre_obs_med pre_obs_p90 n_pre
+-------------------------------------------------------------------------------------------------
+loop_closure                    history    0.80    0.00       0.251       0.253       0.273    28
+loop_closure           frame_correction    0.80    0.00       0.254       0.253       0.273    28
+loop_closure_late               history    0.80    0.00       0.230       0.234       0.280    63
+loop_closure_late      frame_correction    0.80    0.00       0.233       0.234       0.280    63
+repeated_corrections            history    1.00    0.60       0.251       0.253       0.260    41
+repeated_corrections   frame_correction    0.80    0.80       0.219       0.258       0.295    41
+partial_history                 history    1.00    0.00       0.253       0.419       0.450    32
+partial_history        frame_correction    1.00    0.00       0.253       0.262       0.272    32
+frame_correction                history    0.60    0.20       0.248       0.251       0.278    54
+frame_correction       frame_correction    0.60    0.40       0.252       0.283       0.367    54
+
+F4. Telemetry bytes (assumed link budget 20000 bit/s, before link framing overhead).
+item                                                       value
+----------------------------------------------------------------
+tag update record (bytes)                                     25
+snapshot = 14 + 25 N bytes; N = 0 / 1 / 6 / 32      14/39/164/814
+observed snapshots: count                                     60
+observed snapshot bytes: median / max                      39/64
+observed tags per snapshot: max                                2
+observed updates: count                                       58
+observed mean rate over all F1 runs (bit/s)                242.9
+  as share of the assumed link budget                      1.21%
+worst steady case: 32-tag snapshot every 5 s (bit/s)      1302.4
+  + 6 tags updating at the 1/s limit (bit/s)              2502.4
+  as share of the assumed link budget                     12.51%
+
+evaluation time: 567 s

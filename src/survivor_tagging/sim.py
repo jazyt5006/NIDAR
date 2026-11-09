@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
-from .types import CameraIntrinsics, DepthMeasurement, Detection, PoseSample
+from .types import CameraIntrinsics, DepthMeasurement, Detection, PoseCorrection, PoseSample
 
 CLOCK = "sim"
 CAMERA_FRAME = "sim_camera"
@@ -251,6 +251,32 @@ class DetectorSim:
     id_merge_dist_m: float = 0.0  # >0: two detected survivors closer than this share the first one's tracking id
     phantom_box: Optional["Box"] = None  # a non-survivor object (also present as an arena wall/obstacle box)
     phantom_prob: float = 0.0  # per-frame probability the detector fires on the phantom (fresh id each time)
+    # Substep 3.3a: with this probability per detected survivor and frame the detector fires a SECOND box on the same
+    # person (fresh tracking id): the first box extended sideways by a world offset at the person's depth drawn
+    # uniformly from dup_offset_m (random side), so it still covers the whole body. A box that only partly covers a
+    # flat-faced body would land on the wall behind it instead (a wrong surface, not a duplicate). The position
+    # ESTIMATES of the two boxes then differ only by depth noise and sampling (about 0.01-0.05 m, measured in the
+    # 3.3a tests), not by dup_offset_m. Random draws are made only if dup_prob > 0.
+    dup_prob: float = 0.0
+    dup_offset_m: Tuple[float, float] = (0.1, 0.4)
+
+
+@dataclass(frozen=True)
+class Closure:
+    """SIM loop closure (substep 3.2). From at_s on, live poses carry revision k + 1 (k = index in time order) and
+    the drift error restarts from zero; latency_s later a correction event arrives:
+    - "history": corrected poses (true pose + a residual error, constant per closure, N(0, residual_sigma_m) per
+      horizontal axis) for every live pose stamp in range_s ([lo, hi), default [0, at_s)).
+    - "frame_correction": one translation that removes the live error of the last pose before at_s, plus the same
+      residual; it is exact only for observations whose pose error equals that one.
+    emit=False: the event is never delivered (missing correction). All values are SIMULATION values."""
+
+    at_s: float
+    mode: str = "history"
+    range_s: Optional[Tuple[float, float]] = None
+    residual_sigma_m: float = 0.02  # SIM: much smaller than the drift it removes
+    latency_s: float = 0.2  # SIM
+    emit: bool = True
 
 
 @dataclass(frozen=True)
@@ -277,6 +303,23 @@ class Trajectory:
     # the stated covariance.
     pose_drift_sigma_m_per_sqrt_m: float = 0.0
     loop_closure_variance_factor: float = 1.0
+    # Substep 3.2: loop closures with correction events. Non-empty: the revision counts the closures passed and
+    # drift_m_per_s restarts at each closure (the legacy jump / random-walk terms are unchanged). Empty: unchanged.
+    closures: Tuple[Closure, ...] = ()
+    # Substep 3.3a (closures only): after closure k the live horizontal error is a drift with a RANDOM rate a_k ~
+    # N(0, sigma_a^2) per axis, sigma_a = |drift_m_per_s| / sqrt(2) (so the rms drift speed equals |drift_m_per_s|),
+    # from zero at the closure, and the reported covariance is exactly its variance (sigma_a * dt)^2 per axis, so
+    # the error is distributed as the stated covariance. Before the first closure the scripted drift_m_per_s (no
+    # covariance) is unchanged.
+
+    def revision_at(self, t_s: float) -> int:
+        if self.closures:
+            return sum(1 for c in self.closures if t_s >= c.at_s)
+        return int(self.loop_closure_s is not None and t_s >= self.loop_closure_s)
+
+    def drift_start_s(self, t_s: float) -> float:
+        """Time since which drift_m_per_s accumulates (0, or the last closure when closures are set)."""
+        return max([0.0] + [c.at_s for c in self.closures if t_s >= c.at_s])
 
     def true_pose(self, t_s: float, duration_s: float) -> Tuple[np.ndarray, Tuple[float, float, float]]:
         pts = np.asarray(self.waypoints_map, dtype=float)
@@ -316,6 +359,10 @@ class Scenario:
     # Substep 3.1c: None = fixed POSTURE_DIMS_M depth (unchanged default); (lo, hi) = per-survivor true depth drawn
     # uniformly per seed from its own random stream. The pipeline never sees it.
     body_depth_range_m: Optional[Tuple[float, float]] = None
+    # Substep 3.2: the registration the pipeline is configured with at start (None = the true one) and later
+    # registration updates (arrival time s, registration). Truth (scoring) always uses `registration`.
+    initial_registration: Optional[Registration] = None
+    registration_updates: Tuple[Tuple[float, Registration], ...] = ()
 
     def truths(self) -> List[SurvivorTruth]:
         return [SurvivorTruth(s.survivor_id, tuple(self.registration.map_from_grid(s.grid_xy)),
@@ -458,32 +505,52 @@ class Frame:
 
 
 @dataclass(frozen=True)
+class RegistrationUpdate:
+    """SIM registration change (substep 3.2): version 1, 2, ... (the initial registration is version 0)."""
+
+    stamp_ns: int
+    version: int
+    registration: Registration
+
+
+@dataclass(frozen=True)
 class Event:
     arrival_ns: int
-    kind: str  # "pose" or "frame"
-    payload: Union[PoseSample, Frame]
+    kind: str  # "pose", "frame", "correction" (PoseCorrection) or "registration" (RegistrationUpdate)
+    payload: Union[PoseSample, Frame, PoseCorrection, RegistrationUpdate]
 
 
 def _ns(t_s: float) -> int:
     return int(round(t_s * NS_PER_S))
 
 
-def _pose_events(scn: Scenario, rng_pose: Optional[np.random.Generator] = None) -> List[Event]:
+def _pose_events(scn: Scenario, rng_pose: Optional[np.random.Generator] = None,
+                 rng_drift: Optional[np.random.Generator] = None) -> List[Event]:
     tr = scn.trajectory
     n = int(math.floor(scn.duration_s * tr.rate_hz)) + 1
     out = []
     err, var, prev, closed = np.zeros(2), 0.0, None, False
     k2 = tr.pose_drift_sigma_m_per_sqrt_m ** 2
+    closures = sorted(tr.closures, key=lambda c: c.at_s)
+    sigma_a = float(np.linalg.norm(tr.drift_m_per_s)) / math.sqrt(2.0)
+    rates = np.zeros((len(closures), 2))
+    if closures:
+        if rng_drift is None:
+            raise ValueError("a trajectory with closures needs rng_drift")
+        rates = rng_drift.normal(0.0, 1.0, size=(len(closures), 2)) * sigma_a  # always drawn: stream independent of sigma
     for i in range(n):
         t = i / tr.rate_hz
         pos, (roll, pitch, yaw) = tr.true_pose(t, scn.duration_s)
-        rep = pos + np.asarray(tr.drift_m_per_s) * t
-        revision = 0
-        if tr.loop_closure_s is not None:
-            if t < tr.loop_closure_s:
-                rep = rep + np.asarray(tr.loop_closure_jump_m)
-            else:
-                revision = 1
+        revision = tr.revision_at(t)
+        closure_var = 0.0
+        if closures and revision > 0:  # after a closure: random-rate drift, honest covariance (substep 3.3a)
+            dt = t - closures[revision - 1].at_s
+            rep = pos + np.array([rates[revision - 1, 0] * dt, rates[revision - 1, 1] * dt, 0.0])
+            closure_var = (sigma_a * dt) ** 2
+        else:
+            rep = pos + np.asarray(tr.drift_m_per_s) * (t - tr.drift_start_s(t))
+        if tr.loop_closure_s is not None and t < tr.loop_closure_s:
+            rep = rep + np.asarray(tr.loop_closure_jump_m)
         cov = None
         if k2 > 0:
             step = 0.0 if prev is None else float(np.linalg.norm(pos[:2] - prev[:2]))
@@ -496,7 +563,10 @@ def _pose_events(scn: Scenario, rng_pose: Optional[np.random.Generator] = None) 
                 var *= tr.loop_closure_variance_factor
             rep = rep + np.array([err[0], err[1], 0.0])
             cov = np.zeros((6, 6))
-            cov[0, 0] = cov[1, 1] = var
+            cov[0, 0] = cov[1, 1] = var + closure_var
+        elif closures and revision > 0 and sigma_a > 0:
+            cov = np.zeros((6, 6))
+            cov[0, 0] = cov[1, 1] = closure_var
         pose = PoseSample(_ns(t), CLOCK, "map", "body", rep, matrix_to_quat_wxyz(rpy_to_matrix(roll, pitch, yaw)),
                           True, revision, "sim", cov)
         out.append(Event(_ns(t + tr.pose_latency_s), "pose", pose))
@@ -544,6 +614,17 @@ def _frame_events(scn: Scenario, rng_depth: np.random.Generator, rng_det: np.ran
             dets.append(Detection(len(dets), conf, bb, stamp, CLOCK, CAMERA_FRAME, (cam.width, cam.height),
                                   track_ids[sid], "person"))
             det_sids.append(sid)
+            if det.dup_prob > 0 and rng_det.random() < det.dup_prob:
+                depth_z = float(project_points(T, cam, _box_centre(boxes[k])[None, :])[0, 2])
+                shift = float(rng_det.uniform(*det.dup_offset_m)) * (1.0 if rng_det.random() < 0.5 else -1.0)
+                shift_px = shift * cam.fx / max(depth_z, 1e-6)
+                bb2 = (max(min(bb[0], bb[0] + shift_px), 0.0), bb[1],
+                       min(max(bb[2], bb[2] + shift_px), cam.width - 1.0), bb[3])
+                if bb2[2] - bb2[0] >= 1:
+                    dets.append(Detection(len(dets), float(rng_det.uniform(*det.conf_range)), bb2, stamp, CLOCK,
+                                          CAMERA_FRAME, (cam.width, cam.height), next_id, "person"))
+                    det_sids.append(sid)
+                    next_id += 1
         if det.id_merge_dist_m > 0:  # detector identity merge: nearby people share the first one's id
             for a in range(len(dets)):
                 for b in range(a + 1, len(dets)):
@@ -573,6 +654,49 @@ def _frame_events(scn: Scenario, rng_depth: np.random.Generator, rng_det: np.ran
     return out
 
 
+def _correction_events(scn: Scenario, pose_events: Sequence[Event], rng: np.random.Generator) -> List[Event]:
+    """One correction event per emitted Closure (see Closure). The residual is drawn for every closure, emitted or
+    not, so the stream does not depend on emit flags."""
+    poses = [e.payload for e in pose_events]
+    out = []
+    for k, c in enumerate(sorted(scn.trajectory.closures, key=lambda c: c.at_s)):
+        rev = k + 1
+        res = rng.normal(0.0, c.residual_sigma_m, size=2)
+        if not c.emit:
+            continue
+        stamp = _ns(c.at_s)
+        if c.mode == "history":
+            lo, hi = c.range_s if c.range_s is not None else (0.0, c.at_s)
+            corrected = []
+            for p in poses:
+                if not (_ns(lo) <= p.stamp_ns < _ns(hi)):
+                    continue
+                true_pos, _ = scn.trajectory.true_pose(p.stamp_ns / NS_PER_S, scn.duration_s)
+                # Substep 3.3a: the corrected pose's error is exactly `res`, drawn from N(0, residual_sigma_m^2) per
+                # axis, so that is its covariance (it was left out when the live pose carried none).
+                cov = np.zeros((6, 6))
+                cov[0, 0] = cov[1, 1] = c.residual_sigma_m ** 2
+                corrected.append(PoseSample(p.stamp_ns, CLOCK, "map", "body",
+                                            true_pos + np.array([res[0], res[1], 0.0]), p.orientation_wxyz, True, rev,
+                                            "sim_corrected", cov))
+            payload = PoseCorrection(rev, "history", stamp, CLOCK, tuple(corrected))
+        elif c.mode == "frame_correction":
+            last = [p for p in poses if p.stamp_ns < stamp][-1]
+            true_pos, _ = scn.trajectory.true_pose(last.stamp_ns / NS_PER_S, scn.duration_s)
+            err = last.position_m - true_pos
+            payload = PoseCorrection(rev, "frame_correction", stamp, CLOCK, (),
+                                     make_transform(np.eye(3), -err + np.array([res[0], res[1], 0.0])))
+        else:
+            raise ValueError(f"unknown closure mode {c.mode!r}")
+        out.append(Event(_ns(c.at_s + c.latency_s), "correction", payload))
+    return out
+
+
+def _registration_events(scn: Scenario) -> List[Event]:
+    return [Event(_ns(t), "registration", RegistrationUpdate(_ns(t), k + 1, reg))
+            for k, (t, reg) in enumerate(sorted(scn.registration_updates, key=lambda x: x[0]))]
+
+
 def _jitter(bb, sigma: float, cam: SimCamera, rng: np.random.Generator):
     if sigma <= 0:
         return bb
@@ -585,11 +709,11 @@ def _jitter(bb, sigma: float, cam: SimCamera, rng: np.random.Generator):
 
 
 def _rngs(scn: Scenario, seed: int) -> List[np.random.Generator]:
-    """Streams: [depth noise, detector, placement, pose error, body depth]. Depend on (seed, scenario name) so
-    scenarios do not share identical random draws. Adding a stream never changes the earlier ones (SeedSequence
-    children)."""
+    """Streams: [depth noise, detector, placement, pose error, body depth, correction residual, closure drift]. Depend on (seed,
+    scenario name) so scenarios do not share identical random draws. Adding a stream never changes the earlier ones
+    (SeedSequence children)."""
     entropy = [seed, zlib.crc32(scn.name.encode("utf-8"))]
-    return [np.random.default_rng(s) for s in np.random.SeedSequence(entropy).spawn(5)]
+    return [np.random.default_rng(s) for s in np.random.SeedSequence(entropy).spawn(7)]
 
 
 def _box_centre(b: Box) -> np.ndarray:
@@ -627,10 +751,12 @@ def place_survivors(scn: Scenario, seed: int) -> Scenario:
 
 
 def build_events(scn: Scenario, seed: int) -> List[Event]:
-    """Time-ordered event stream for place_survivors(scn, seed). Ties at equal arrival: poses before frames, then
-    generation order."""
+    """Time-ordered event stream for place_survivors(scn, seed). Ties at equal arrival: poses first, then generation
+    order (frames, corrections, registration updates)."""
     scn = place_survivors(scn, seed)
-    rng_depth, rng_det, _, rng_pose, _ = _rngs(scn, seed)
-    events = _pose_events(scn, rng_pose) + _frame_events(scn, rng_depth, rng_det)
+    rng_depth, rng_det, _, rng_pose, _, rng_corr, rng_drift = _rngs(scn, seed)
+    poses = _pose_events(scn, rng_pose, rng_drift)
+    events = poses + _frame_events(scn, rng_depth, rng_det) + _correction_events(scn, poses, rng_corr) + \
+        _registration_events(scn)
     order = {id(e): i for i, e in enumerate(events)}
     return sorted(events, key=lambda e: (e.arrival_ns, 0 if e.kind == "pose" else 1, order[id(e)]))

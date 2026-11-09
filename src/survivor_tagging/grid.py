@@ -22,6 +22,7 @@ from .types import FailureReason, SurvivorObservation
 Cell = Tuple[int, int]
 PROB_WINDOW_SIGMA = 5.0  # candidate cells cover mean +/- 5 sigma per grid axis (tail mass < 6e-7 per side)
 GL_NODES = 24  # Gauss-Legendre nodes per x-cell for correlated covariances
+_GL_RULE = np.polynomial.legendre.leggauss(GL_NODES)  # constant; computed once (substep 3.2, identical results)
 
 _REQUIRED = ("grid.origin_in_map_m", "grid.yaw_map_to_grid_rad", "grid.axis_flip_x", "grid.axis_flip_y",
              "grid.index_base", "grid.numbering", "grid.registration_valid")
@@ -185,7 +186,7 @@ def cell_probabilities(reg: GridRegistration, mean_map_xy: Sequence[float], cov_
     else:
         rho = cov[0, 1] / (sx * sy)
         s_cond = sy * math.sqrt(max(1.0 - rho * rho, 0.0))
-        nodes, weights = np.polynomial.legendre.leggauss(GL_NODES)
+        nodes, weights = _GL_RULE
         for ii in i_range:
             a, b = max(ii * c, mu[0] - k * sx), min((ii + 1) * c, mu[0] + k * sx)
             if b <= a:

@@ -23,7 +23,7 @@ from .diagnostics import LENGTH_ARTIFACTS, DiagSummary, diagnose_run, format_dia
 from .footprint import FootprintParams, analyse_footprint
 from .geometry import weighted_median
 from .harness import _pct, evaluate_many
-from .scenarios import all_scenarios
+from .scenarios import pre_32_scenarios
 from .sim_pipelines import layer1234_factory
 
 SEEDS = range(5)
@@ -81,7 +81,7 @@ def main() -> None:  # pragma: no cover
             if name == _name("current", off):
                 diagnose_run(placed, frames, pl, diags[off])
 
-    ev = evaluate_many(pipelines, all_scenarios().values(), SEEDS, hooks=[hook])
+    ev = evaluate_many(pipelines, pre_32_scenarios().values(), SEEDS, hooks=[hook])
     elapsed = time.perf_counter() - t0
     print(f"SIMULATION tested on synthetic data; random_in_cell placement; 5 seeds; {len(ev.scenarios)} scenarios\n")
 

@@ -39,7 +39,7 @@ from .calibration import ece, format_reliability, reliability_table, worst_over_
 from .grid import GridRegistration
 from .harness import MATCH_RADIUS_M, score_tags
 from .pipeline import Layer1234Pipeline, tag_result
-from .scenarios import all_scenarios
+from .scenarios import all_scenarios, pre_32_scenarios
 from .sim import SurvivorTruth, build_events, place_survivors
 from .sim_pipelines import scenario_config
 from .tracking import Layer4, Layer4Params, expected_value_threshold
@@ -267,7 +267,7 @@ def eff_sigma(s) -> float:
 def main() -> None:  # pragma: no cover
     t0 = time.perf_counter()
     workers = max(1, (os.cpu_count() or 2) - 1)
-    names = list(all_scenarios().keys())
+    names = list(pre_32_scenarios().keys())  # substep 3.2 scenarios excluded (reproducibility)
     seeds = SELECT_SEEDS + HELDOUT_SEEDS
     tasks = [(o, m, n, seeds) for o in OFFSETS for m in MODELS for n in names]
     cache: Dict[Tuple[float, str], List[CachedRun]] = {(o, m): [] for o in OFFSETS for m in MODELS}

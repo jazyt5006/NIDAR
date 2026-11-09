@@ -9,6 +9,12 @@ Per frame batch (observations sharing one capture stamp, already through Layers 
    and is kept out of fusion. Ungated observations start new tracks.
    Each observation's covariance gets an isotropic model-error term l4.obs_model_sigma_m (frame-to-frame variation of
    where on the body the point lands, which the Layer 1 measurement covariance does not describe).
+   Near-duplicate observations (substep 3.3a): two observations of ONE frame closer than
+   l4.min_separate_survivor_distance_m that fit the same track within the gate (or of which at least one fits no
+   track, since it would start a track next to the body) are one body seen twice (e.g. two boxes on one person). The one with the higher detector confidence is kept; the other is
+   dropped with NEAR_DUPLICATE_OBSERVATION and does not count as an association ambiguity. They are not fused: both
+   boxes come from the same depth image and overlapping pixels, so their errors are strongly correlated and fusing
+   them would make the track covariance overconfident.
 2. Fusion (de-correlated): observations are grouped into view bins (bearing from survivor to camera, relative to the
    track's first bearing, l4.view_bin_deg wide; a silence longer than l4.view_bin_max_gap_s starts a new bin).
    Within a bin: information-weighted mean, but the noise is reduced by at most l4.max_effective_obs_per_bin
@@ -318,6 +324,17 @@ class Layer4:
         self.now_ns = now_ns if self.now_ns is None else max(self.now_ns, now_ns)
         self._timeouts()
 
+    def reconcile(self) -> List[int]:
+        """Layer 5 incremental recompute: after tracks were replaced from outside, merge consistent tracks and
+        update the status of the merged ones (as at the end of a frame). Returns the ids of tracks that changed."""
+        if self.now_ns is None:
+            return []
+        changed = self._merge(self.now_ns)
+        for t in changed:
+            if t.track_id in self.tracks:
+                self._update_status(t)
+        return [t.track_id for t in changed]
+
     def tags(self) -> List[Tag]:
         return [self._tag(t) for t in sorted(self.tracks.values(), key=lambda t: t.track_id) if t.x is not None]
 
@@ -385,6 +402,16 @@ class Layer4:
                     d2[i, j] = v
                     hint = it.obs.tracking_id is not None and it.obs.tracking_id == t.last_tracking_id
                     cost[i, j] = v - (self.p.id_hint_bonus if hint else 0.0)
+        dup_of = self._near_duplicates(items, cost)
+        dup_obs: Dict[int, List[SurvivorObservation]] = {}
+        if dup_of:
+            keep = [i for i in range(len(items)) if i not in dup_of]
+            pos = {i: n for n, i in enumerate(keep)}
+            for k, i in dup_of.items():
+                items[k].obs.warnings.append(FailureReason.NEAR_DUPLICATE_OBSERVATION)
+                dup_obs.setdefault(pos[i], []).append(items[k].obs)
+            items = [items[i] for i in keep]
+            cost, d2 = cost[keep], d2[keep]
         assigned = {i: j for i, j in hungarian(cost) if cost[i, j] < BIG / 2}
         taken = set(assigned.values())
         touched: Dict[int, Track] = {}
@@ -404,19 +431,62 @@ class Layer4:
                 t = tracks[j]
                 it.nis = float(d2[i, j])
                 self._add(t, it)
+                # Recovery: this observation clearly fits t over every other track it gates with, so an earlier
+                # unresolved pair no longer counts against any of them.
                 t.ambiguous_streak = 0
+                for k in range(nt):
+                    if cost[i, k] < BIG / 2:
+                        tracks[k].ambiguous_streak = 0
                 touched[t.track_id] = t
             else:
                 t = self._new_track(it)
                 touched[t.track_id] = t
+            if i in dup_obs:
+                self._note_duplicates(t, stamp, it, dup_obs[i])
         for t in touched.values():
             self._refuse(t)
-        self._flag_proximity([t for t in touched.values() if stamp in t.stamps()], stamp)
-        for t in self._merge(stamp):
+        # Merge first: two tracks of one body started in this very frame (near-duplicates) must not leave a
+        # "too close" ambiguity flag on the merged track.
+        merged = self._merge(stamp)
+        for t in merged:
             touched[t.track_id] = t
+        self._flag_proximity([t for t in touched.values() if t.track_id in self.tracks and stamp in t.stamps()],
+                             stamp)
         for t in touched.values():
             if t.track_id in self.tracks:
                 self._update_status(t)
+
+    def _near_duplicates(self, items: List[TrackObs], cost: np.ndarray) -> Dict[int, int]:
+        """Same-frame near-duplicate pairs -> {dropped index: kept index}. Two items are one body seen twice if they
+        are closer than min_separation_m AND are not already explained by two different tracks: they gate with a
+        common track, or at least one of them gates with no track (it would start a new track right next to the
+        body). The gate alone is not enough: a well-established track has a tight gate, so the second box of a pair
+        0.2 m away can fall outside it and would start a second track. The higher detector confidence is kept
+        (ties: the earlier item)."""
+        n = len(items)
+        sep = self.p.min_separation_m
+        if n < 2 or sep <= 0:
+            return {}
+        gates = [set(np.flatnonzero(cost[i] < BIG / 2).tolist()) for i in range(n)]
+        order = sorted(range(n), key=lambda i: (-items[i].obs.confidence, i))
+        dropped: Dict[int, int] = {}
+        for a, i in enumerate(order):
+            if i in dropped:
+                continue
+            for k in order[a + 1:]:
+                if k in dropped or float(np.linalg.norm(items[i].xy - items[k].xy)) >= sep:
+                    continue
+                if gates[i] & gates[k]:
+                    dropped[k] = i
+        return dropped
+
+    def _note_duplicates(self, t: Track, stamp: int, kept: TrackObs, dups: Sequence[SurvivorObservation]) -> None:
+        t.warn(FailureReason.NEAR_DUPLICATE_OBSERVATION)
+        for o in dups:
+            t.history.append((stamp, "near_duplicate_dropped", f"obs {o.observation_id} (kept obs "
+                                                                f"{kept.obs.observation_id})"))
+        self.events.append((stamp, FailureReason.NEAR_DUPLICATE_OBSERVATION.value, t.track_id,
+                            f"{len(dups)} dropped"))
 
     def _new_track(self, it: TrackObs) -> Track:
         t = Track(self.next_id, it.stamp_ns, first_seen_ns=it.stamp_ns)
@@ -480,17 +550,24 @@ class Layer4:
             for a in range(len(ts)):
                 for b in range(a + 1, len(ts)):
                     ta, tb = ts[a], ts[b]
-                    if ta.stamps() & tb.stamps():
-                        continue
                     d = ta.x - tb.x
+                    shared = ta.stamps() & tb.stamps()
+                    if shared and not self._shared_are_near_duplicates(ta, tb, shared):
+                        continue
                     if np.linalg.norm(d) > self.p.max_assoc_dist_m:
                         continue
                     if float(d @ np.linalg.solve(ta.P + tb.P, d)) > self.p.merge_gate_chi2:
                         continue
                     keep, gone = (ta, tb) if STATUS_RANK[ta.status] >= STATUS_RANK[tb.status] else (tb, ta)
                     for it in gone.items:
+                        if it.stamp_ns in shared:  # near-duplicate of keep's observation of the same frame: drop
+                            it.obs.warnings.append(FailureReason.NEAR_DUPLICATE_OBSERVATION)
+                            continue
                         self._add_merged(keep, it)
                     keep.n_frames += gone.n_frames - len(gone.items)
+                    if shared:  # the streak was caused by this pair, which is now one track
+                        keep.ambiguous_streak = 0
+                        keep.warn(FailureReason.NEAR_DUPLICATE_OBSERVATION)
                     keep.history.append((stamp, "merged", f"track {gone.track_id}"))
                     gone.history.append((stamp, "merged_into", f"track {keep.track_id}"))
                     keep.warn(FailureReason.TRACK_DUPLICATE_MERGED)
@@ -505,6 +582,19 @@ class Layer4:
                 if merged:
                     break
         return changed
+
+    def _shared_are_near_duplicates(self, ta: Track, tb: Track, shared: Set[int]) -> bool:
+        """Tracks co-observed only through near-duplicate pairs (every shared frame: the two observations closer than
+        min_separation_m, and the fused tracks too) describe one body (substep 3.3a)."""
+        sep = self.p.min_separation_m
+        if sep <= 0 or float(np.linalg.norm(ta.x - tb.x)) >= sep:
+            return False
+        for stamp in shared:
+            xa = [it.xy for it in ta.items if it.stamp_ns == stamp]
+            xb = [it.xy for it in tb.items if it.stamp_ns == stamp]
+            if any(float(np.linalg.norm(u - v)) >= sep for u in xa for v in xb):
+                return False
+        return True
 
     def _add_merged(self, t: Track, it: TrackObs) -> None:
         t.items.append(it)

@@ -97,9 +97,10 @@ def test_library_layers_do_not_import_simulator_or_baseline():
     from pathlib import Path
 
     src = Path(__file__).resolve().parents[1] / "src" / "survivor_tagging"
-    banned = {"sim", "scenarios", "baseline", "harness", "sim_pipelines", "experiments", "diagnostics"}
+    banned = {"sim", "scenarios", "baseline", "harness", "sim_pipelines", "experiments", "diagnostics",
+              "experiments_calib", "experiments_layer5"}
     for name in ("types", "config", "geometry", "transforms", "grid", "pipeline", "output", "tracking", "footprint",
-                 "calibration"):
+                 "calibration", "corrections"):
         tree = ast.parse((src / f"{name}.py").read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom) and node.level == 1:

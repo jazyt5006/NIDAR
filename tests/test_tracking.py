@@ -370,3 +370,143 @@ def test_property_random_streams_legal_finite_bounded():
                 if "->" in h[1]:
                     a, b = h[1].split("->")
                     assert TagStatus[b] in LEGAL_TRANSITIONS[TagStatus[a]]
+
+
+# --- substep 3.3a: near-duplicate observations in one frame ---------------------------------------------------------
+
+from dataclasses import replace as _replace  # noqa: E402
+
+DUP = FailureReason.NEAR_DUPLICATE_OBSERVATION
+AMB = FailureReason.ASSOCIATION_AMBIGUOUS
+
+
+def _dup_frames(sep, n=10, centre=(3.5, 3.5), seed=0, confs=(0.9, 0.7), sd=0.15):
+    """n frames, each with two boxes on one body `sep` m apart (different tracking ids). sd = position sigma of an
+    observation (a Layer 1-3 sigma of 0.1-0.15 m is typical; with sd 0.02 a pair 0.3 m apart is statistically two bodies and the
+    second box falls outside the association gate of the first)."""
+    rng = np.random.default_rng(seed)
+    frames = []
+    for k in range(n):
+        c = np.array(centre) + rng.normal(0, 0.02, 2)
+        a = obs(0.2 * k, c, tid=10, conf=confs[0], sd=sd)
+        b = obs(0.2 * k, c + np.array([0.0, sep]), tid=20 + k, conf=confs[1], sd=sd)
+        frames.append([a, b])
+    return frames
+
+
+@pytest.mark.parametrize("sep", [0.1, 0.2, 0.3, 0.4])
+def test_33a_double_detection_is_one_track_without_ambiguity(sep):
+    l4 = layer4()
+    frames = _dup_frames(sep)
+    feed(l4, frames)
+    t = only(l4)
+    assert t.status is TagStatus.CONFIRMED and t.ambiguous_streak == 0
+    assert DUP in t.warnings and AMB not in t.warnings
+    assert not any(AMB in o.warnings for f in frames[1:] for o in f)
+    # from the second frame on, the lower-confidence box of every pair is dropped, the better one is fused
+    assert all(DUP in f[1].warnings and DUP not in f[0].warnings for f in frames[1:])
+    assert all(it.obs.confidence == 0.9 for it in t.items if it.stamp_ns > S // 5)
+    stamps = [it.stamp_ns for it in t.items]
+    assert len(stamps) == len(set(stamps))
+
+
+def test_33a_better_detector_confidence_is_kept_whatever_the_order():
+    l4 = layer4()
+    feed(l4, [[obs(0.2 * k, (3.5, 3.5), sd=0.1)] for k in range(3)])
+    a, b = obs(0.6, (3.5, 3.5), conf=0.6, sd=0.1), obs(0.6, (3.5, 3.8), conf=0.95, sd=0.1)
+    l4.update([a, b])
+    t = only(l4)
+    assert t.items[-1].obs is b and DUP in a.warnings and t.n_frames == 4
+
+
+def test_33a_pair_in_the_first_frame_ends_as_one_track():
+    """No track exists yet, so both boxes start one (the rule needs a common track); the two tracks that follow are
+    always seen together at a small separation, are statistically one body and are consolidated."""
+    l4 = layer4()
+    feed(l4, _dup_frames(0.2, n=8))
+    t = only(l4)
+    assert t.status is TagStatus.CONFIRMED and t.ambiguous_streak == 0
+    assert len(l4.dropped) == 1 and l4.dropped[0].history[-1][1] == "merged_into"
+
+
+@pytest.mark.parametrize("gap", [0.5, 0.8, 1.2])
+def test_33a_real_neighbours_stay_separate(gap):
+    """At or beyond l4.min_separate_survivor_distance_m (0.5) two bodies remain two tracks."""
+    l4 = layer4()
+    rng = np.random.default_rng(1)
+    for k in range(10):
+        l4.update([obs(0.2 * k, (3.5, 2.6) + rng.normal(0, 0.02, 2), tid=1),
+                   obs(0.2 * k, (3.5, 2.6 + gap) + rng.normal(0, 0.02, 2), tid=2)])
+    assert len(l4.tracks) == 2
+    assert all(DUP not in t.warnings for t in l4.tracks.values())
+    assert all(t.n_frames == 10 for t in l4.tracks.values())
+
+
+def test_33a_neighbours_seen_in_different_frames_stay_separate():
+    l4 = layer4()
+    for k in range(12):
+        who = (3.5, 2.6) if k % 2 == 0 else (3.5, 3.4)
+        l4.update([obs(0.2 * k, who, tid=1 if k % 2 == 0 else 2)])
+    assert len(l4.tracks) == 2
+
+
+def test_33a_disabled_with_zero_separation():
+    l4 = layer4(min_separation_m=0.0)
+    l4.update([obs(0.0, (3.5, 3.5)), obs(0.0, (3.5, 3.7))])
+    assert len(l4.tracks) == 2  # the old behaviour
+
+
+def test_33a_old_behaviour_deadlocks_and_new_merge_recovers_the_streak():
+    """Two tracks of ONE body made while near-duplicate handling was off: as soon as a frame has only one of the two
+    boxes, that observation fits both tracks, is ambiguous in every such frame and both tracks go UNRELIABLE (the
+    3.2 finding). Once handling is on, the tracks consolidate, the streak clears and the track is usable."""
+    l4 = layer4(min_separation_m=0.0)
+    pairs = _dup_frames(0.2, n=14)
+    mid = lambda k: [obs(0.2 * k, (3.5, 3.6), sd=0.15)]  # noqa: E731  one box, between the two tracks
+    feed(l4, pairs[:2])
+    feed(l4, [mid(k) for k in range(2, 7)])  # the second box is missing from now on
+    assert len(l4.tracks) == 2 and all(t.status is TagStatus.UNRELIABLE for t in l4.tracks.values())
+    assert all(t.ambiguous_streak >= 3 for t in l4.tracks.values())
+    l4.p = _replace(l4.p, min_separation_m=0.5)
+    feed(l4, [mid(k) for k in range(7, 12)])
+    t = only(l4)
+    assert t.ambiguous_streak == 0 and t.status is not TagStatus.UNRELIABLE and DUP in t.warnings
+    stamps = [it.stamp_ns for it in t.items]
+    assert len(stamps) == len(set(stamps))  # still one observation per frame
+
+
+def test_33a_streak_clears_when_a_later_observation_clearly_fits_one_track():
+    l4 = layer4()
+    for k in range(5):  # two separate bodies 0.6 m apart
+        l4.update([obs(0.2 * k, (3.5, 2.7), tid=1, sd=0.15), obs(0.2 * k, (3.5, 3.3), tid=2, sd=0.15)])
+    assert len(l4.tracks) == 2
+    for k in range(5, 7):  # one observation midway: ambiguous between the two
+        l4.update([obs(0.2 * k, (3.5, 3.0), sd=0.15)])
+    assert all(t.ambiguous_streak >= 1 for t in l4.tracks.values())
+    l4.update([obs(1.4, (3.5, 2.7), tid=1, sd=0.15)])  # clearly body 1
+    first = min(l4.tracks.values(), key=lambda t: t.x[1])
+    assert first.ambiguous_streak == 0
+    l4.update([obs(1.6, (3.5, 3.3), tid=2, sd=0.15)])  # clearly body 2
+    assert all(t.ambiguous_streak == 0 for t in l4.tracks.values())
+
+
+def test_33a_real_pair_with_one_noisy_frame_is_not_collapsed():
+    """One frame in which two real bodies come out 0.4 m apart (noise, closer than the 0.5 m separation) costs one
+    measurement but must not merge or drop their tracks."""
+    l4 = layer4()
+    for k in range(8):
+        gap = 0.4 if k == 4 else 0.8
+        l4.update([obs(0.2 * k, (3.5, 3.0), tid=1, sd=0.15), obs(0.2 * k, (3.5, 3.0 + gap), tid=2, sd=0.15)])
+    main = [t for t in l4.tracks.values() if t.n_frames >= 7]
+    assert len(main) == 2 and abs(main[0].x[1] - main[1].x[1]) > 0.6
+    assert not any(h[1] in ("merged", "merged_into") for t in main for h in t.history)
+
+
+def test_33a_determinism():
+    def run():
+        l4 = layer4()
+        feed(l4, _dup_frames(0.3, seed=5))
+        t = only(l4)
+        return t.x.tolist(), t.P.tolist(), t.status, t.n_frames, [h[1] for h in t.history]
+
+    assert run() == run()

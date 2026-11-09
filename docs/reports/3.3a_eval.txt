@@ -1,0 +1,159 @@
+Before / after, targeted scenarios (5 seeds)
+scenario              pipe              correct corr_conf  missed dup/run err_med  false
+----------------------------------------------------------------------------------------
+double_detection      L1-4@0.0   before                (scenario did not exist)
+double_detection      L1-4@0.0    after   1.000     0.800   0.000   0.000   0.248  0.000
+double_detection      L1-4@0.2   before                (scenario did not exist)
+double_detection      L1-4@0.2    after   1.000     0.800   0.000   0.000   0.063  0.000
+double_detection      L1-5@0.0   before                (scenario did not exist)
+double_detection      L1-5@0.0    after   1.000     0.800   0.000   0.000   0.248  0.000
+double_detection      L1-5@0.2   before                (scenario did not exist)
+double_detection      L1-5@0.2    after   1.000     0.800   0.000   0.000   0.063  0.000
+repeated_corrections  L1-4@0.0   before   0.800     0.600   0.200   0.200   0.294  0.000
+repeated_corrections  L1-4@0.0    after   1.000     0.800   0.000   0.000   0.294  0.000
+repeated_corrections  L1-4@0.2   before   1.000     0.800   0.000   0.200   0.134  0.000
+repeated_corrections  L1-4@0.2    after   1.000     0.800   0.000   0.000   0.107  0.000
+repeated_corrections  L1-5@0.0   before   1.000     0.800   0.000   0.600   0.251  0.000
+repeated_corrections  L1-5@0.0    after   1.000     0.800   0.000   0.000   0.240  0.000
+repeated_corrections  L1-5@0.2   before   0.800     0.600   0.200   0.200   0.053  0.000
+repeated_corrections  L1-5@0.2    after   1.000     1.000   0.000   0.000   0.054  0.000
+loop_closure          L1-4@0.0   before   1.000     0.400   0.000   0.800   0.251  0.000
+loop_closure          L1-4@0.0    after   1.000     0.400   0.000   1.000   0.251  0.000
+loop_closure          L1-4@0.2   before   1.000     1.000   0.000   0.800   0.063  0.000
+loop_closure          L1-4@0.2    after   1.000     1.000   0.000   1.000   0.063  0.000
+loop_closure          L1-5@0.0   before   0.800     0.400   0.200   0.000   0.251  0.000
+loop_closure          L1-5@0.0    after   1.000     0.400   0.000   0.000   0.253  0.000
+loop_closure          L1-5@0.2   before   0.800     0.800   0.200   0.000   0.067  0.000
+loop_closure          L1-5@0.2    after   1.000     1.000   0.000   0.000   0.068  0.000
+loop_closure_late     L1-4@0.0   before   0.600     0.200   0.000   0.000   0.524  0.200
+loop_closure_late     L1-4@0.0    after   0.600     0.200   0.000   0.000   0.524  0.200
+loop_closure_late     L1-4@0.2   before   0.800     0.600   0.000   0.000   0.424  0.200
+loop_closure_late     L1-4@0.2    after   0.800     0.600   0.000   0.000   0.424  0.200
+loop_closure_late     L1-5@0.0   before   0.800     0.400   0.000   0.000   0.230  0.000
+loop_closure_late     L1-5@0.0    after   0.800     0.400   0.000   0.000   0.229  0.000
+loop_closure_late     L1-5@0.2   before   0.800     0.600   0.000   0.000   0.061  0.000
+loop_closure_late     L1-5@0.2    after   0.800     0.600   0.000   0.000   0.061  0.000
+two_adjacent          L1-4@0.0   before   0.800     0.400   0.000   0.000   0.231  0.000
+two_adjacent          L1-4@0.0    after   0.800     0.400   0.000   0.000   0.231  0.000
+two_adjacent          L1-4@0.2   before   1.000     0.500   0.000   0.000   0.051  0.000
+two_adjacent          L1-4@0.2    after   1.000     0.500   0.000   0.000   0.051  0.000
+two_adjacent          L1-5@0.0   before   0.800     0.400   0.000   0.000   0.231  0.000
+two_adjacent          L1-5@0.0    after   0.800     0.400   0.000   0.000   0.231  0.000
+two_adjacent          L1-5@0.2   before   1.000     0.500   0.000   0.000   0.051  0.000
+two_adjacent          L1-5@0.2    after   1.000     0.500   0.000   0.000   0.051  0.000
+two_same_cell         L1-4@0.0   before   0.800     0.500   0.000   0.000   0.239  0.000
+two_same_cell         L1-4@0.0    after   0.800     0.500   0.000   0.000   0.239  0.000
+two_same_cell         L1-4@0.2   before   1.000     0.300   0.000   0.000   0.058  0.000
+two_same_cell         L1-4@0.2    after   1.000     0.300   0.000   0.000   0.058  0.000
+two_same_cell         L1-5@0.0   before   0.800     0.500   0.000   0.000   0.239  0.000
+two_same_cell         L1-5@0.0    after   0.800     0.500   0.000   0.000   0.239  0.000
+two_same_cell         L1-5@0.2   before   1.000     0.300   0.000   0.000   0.058  0.000
+two_same_cell         L1-5@0.2    after   1.000     0.300   0.000   0.000   0.058  0.000
+id_merge              L1-4@0.0   before   0.600     0.500   0.000   0.000   0.222  0.000
+id_merge              L1-4@0.0    after   0.600     0.500   0.000   0.000   0.222  0.000
+id_merge              L1-4@0.2   before   0.600     0.500   0.000   0.000   0.045  0.000
+id_merge              L1-4@0.2    after   0.600     0.500   0.000   0.000   0.045  0.000
+id_merge              L1-5@0.0   before   0.600     0.500   0.000   0.000   0.222  0.000
+id_merge              L1-5@0.0    after   0.600     0.500   0.000   0.000   0.222  0.000
+id_merge              L1-5@0.2   before   0.600     0.500   0.000   0.000   0.045  0.000
+id_merge              L1-5@0.2    after   0.600     0.500   0.000   0.000   0.045  0.000
+
+A1 real-survivor non-regression (|after - before| <= 0.02)
+  two_adjacent  L1-4@0.0  missed_per_run          0.000 -> 0.000  diff 0.000
+  two_adjacent  L1-4@0.0  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  two_adjacent  L1-4@0.0  correct_confirmed_rate  0.400 -> 0.400  diff 0.000
+  two_adjacent  L1-4@0.2  missed_per_run          0.000 -> 0.000  diff 0.000
+  two_adjacent  L1-4@0.2  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  two_adjacent  L1-4@0.2  correct_confirmed_rate  0.500 -> 0.500  diff 0.000
+  two_adjacent  L1-5@0.0  missed_per_run          0.000 -> 0.000  diff 0.000
+  two_adjacent  L1-5@0.0  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  two_adjacent  L1-5@0.0  correct_confirmed_rate  0.400 -> 0.400  diff 0.000
+  two_adjacent  L1-5@0.2  missed_per_run          0.000 -> 0.000  diff 0.000
+  two_adjacent  L1-5@0.2  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  two_adjacent  L1-5@0.2  correct_confirmed_rate  0.500 -> 0.500  diff 0.000
+  two_same_cell L1-4@0.0  missed_per_run          0.000 -> 0.000  diff 0.000
+  two_same_cell L1-4@0.0  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  two_same_cell L1-4@0.0  correct_confirmed_rate  0.500 -> 0.500  diff 0.000
+  two_same_cell L1-4@0.2  missed_per_run          0.000 -> 0.000  diff 0.000
+  two_same_cell L1-4@0.2  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  two_same_cell L1-4@0.2  correct_confirmed_rate  0.300 -> 0.300  diff 0.000
+  two_same_cell L1-5@0.0  missed_per_run          0.000 -> 0.000  diff 0.000
+  two_same_cell L1-5@0.0  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  two_same_cell L1-5@0.0  correct_confirmed_rate  0.500 -> 0.500  diff 0.000
+  two_same_cell L1-5@0.2  missed_per_run          0.000 -> 0.000  diff 0.000
+  two_same_cell L1-5@0.2  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  two_same_cell L1-5@0.2  correct_confirmed_rate  0.300 -> 0.300  diff 0.000
+  id_merge      L1-4@0.0  missed_per_run          0.000 -> 0.000  diff 0.000
+  id_merge      L1-4@0.0  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  id_merge      L1-4@0.0  correct_confirmed_rate  0.500 -> 0.500  diff 0.000
+  id_merge      L1-4@0.2  missed_per_run          0.000 -> 0.000  diff 0.000
+  id_merge      L1-4@0.2  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  id_merge      L1-4@0.2  correct_confirmed_rate  0.500 -> 0.500  diff 0.000
+  id_merge      L1-5@0.0  missed_per_run          0.000 -> 0.000  diff 0.000
+  id_merge      L1-5@0.0  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  id_merge      L1-5@0.0  correct_confirmed_rate  0.500 -> 0.500  diff 0.000
+  id_merge      L1-5@0.2  missed_per_run          0.000 -> 0.000  diff 0.000
+  id_merge      L1-5@0.2  duplicate_per_run       0.000 -> 0.000  diff 0.000
+  id_merge      L1-5@0.2  correct_confirmed_rate  0.500 -> 0.500  diff 0.000
+  worst difference 0.000: PASS
+
+A3 regression gate (all rows outside the targeted scenarios, to 3 decimals)
+  1040 numbers compared, 46 differ: FAIL
+  DIFF L1-4@0.0|opposite_views_boundary confirm_from_first_median_s: 4.200 -> 2.200
+  DIFF L1-4@0.0|opposite_views_boundary confirm_median_s: 4.400 -> 2.400
+  DIFF L1-4@0.0|revisit_after_gap confirm_from_first_median_s: 0.800 -> 1.000
+  DIFF L1-4@0.0|revisit_after_gap confirm_median_s: 1.000 -> 1.200
+  DIFF L1-4@0.0|revisit_after_gap err_median_m: 0.212 -> 0.214
+  DIFF L1-4@0.0|revisit_after_gap err_p90_m: 0.288 -> 0.286
+  DIFF L1-4@0.0|revisit_after_gap false_confirmed_per_run: 0.200 -> 0.400
+  DIFF L1-4@0.0|revisit_after_gap missed_per_run: 0.200 -> 0.000
+  DIFF L1-4@0.0|thin_person_in_front_of_wall err_median_m: 0.234 -> 0.241
+  DIFF L1-4@0.0|thin_person_in_front_of_wall err_p90_m: 0.244 -> 0.245
+  DIFF L1-4@0.0|thin_person_in_front_of_wall false_provisional_per_run: 0.200 -> 0.400
+  DIFF L1-4@0.0|thin_person_in_front_of_wall missed_per_run: 0.200 -> 0.000
+  DIFF L1-4@0.2|opposite_views_boundary confirm_from_first_median_s: 2.600 -> 1.400
+  DIFF L1-4@0.2|opposite_views_boundary confirm_median_s: 2.800 -> 1.600
+  DIFF L1-4@0.2|opposite_views_boundary err_median_m: 0.135 -> 0.136
+  DIFF L1-4@0.2|revisit_after_gap err_median_m: 0.099 -> 0.069
+  DIFF L1-4@0.2|revisit_after_gap err_p90_m: 0.147 -> 0.144
+  DIFF L1-4@0.2|revisit_after_gap false_provisional_per_run: 0.200 -> 0.400
+  DIFF L1-4@0.2|revisit_after_gap missed_per_run: 0.200 -> 0.000
+  DIFF L1-4@0.2|thin_person_in_front_of_wall correct_rate: 0.400 -> 0.600
+  DIFF L1-4@0.2|thin_person_in_front_of_wall err_median_m: 0.052 -> 0.055
+  DIFF L1-4@0.2|thin_person_in_front_of_wall err_p90_m: 0.059 -> 0.060
+  DIFF L1-4@0.2|thin_person_in_front_of_wall missed_per_run: 0.200 -> 0.000
+  DIFF L1-5@0.0|opposite_views_boundary confirm_from_first_median_s: 4.200 -> 2.200
+  DIFF L1-5@0.0|opposite_views_boundary confirm_median_s: 4.400 -> 2.400
+  DIFF L1-5@0.0|revisit_after_gap confirm_from_first_median_s: 0.800 -> 1.000
+  DIFF L1-5@0.0|revisit_after_gap confirm_median_s: 1.000 -> 1.200
+  DIFF L1-5@0.0|revisit_after_gap err_median_m: 0.212 -> 0.214
+  DIFF L1-5@0.0|revisit_after_gap err_p90_m: 0.288 -> 0.286
+  DIFF L1-5@0.0|revisit_after_gap false_confirmed_per_run: 0.200 -> 0.400
+  DIFF L1-5@0.0|revisit_after_gap missed_per_run: 0.200 -> 0.000
+  DIFF L1-5@0.0|thin_person_in_front_of_wall err_median_m: 0.234 -> 0.241
+  DIFF L1-5@0.0|thin_person_in_front_of_wall err_p90_m: 0.244 -> 0.245
+  DIFF L1-5@0.0|thin_person_in_front_of_wall false_provisional_per_run: 0.200 -> 0.400
+  DIFF L1-5@0.0|thin_person_in_front_of_wall missed_per_run: 0.200 -> 0.000
+  DIFF L1-5@0.2|opposite_views_boundary confirm_from_first_median_s: 2.600 -> 1.400
+  DIFF L1-5@0.2|opposite_views_boundary confirm_median_s: 2.800 -> 1.600
+  DIFF L1-5@0.2|opposite_views_boundary err_median_m: 0.135 -> 0.136
+  DIFF L1-5@0.2|revisit_after_gap err_median_m: 0.099 -> 0.069
+  DIFF L1-5@0.2|revisit_after_gap err_p90_m: 0.147 -> 0.144
+  DIFF L1-5@0.2|revisit_after_gap false_provisional_per_run: 0.200 -> 0.400
+  DIFF L1-5@0.2|revisit_after_gap missed_per_run: 0.200 -> 0.000
+  DIFF L1-5@0.2|thin_person_in_front_of_wall correct_rate: 0.400 -> 0.600
+  DIFF L1-5@0.2|thin_person_in_front_of_wall err_median_m: 0.052 -> 0.055
+  DIFF L1-5@0.2|thin_person_in_front_of_wall err_p90_m: 0.059 -> 0.060
+  DIFF L1-5@0.2|thin_person_in_front_of_wall missed_per_run: 0.200 -> 0.000
+
+A1 double_detection (per body offset; 5 instances per pipeline)
+  L1-4@0.0  correct 1.00 (>= 0.80), tracks ending UNRELIABLE by ambiguity 0, tracks that went UNRELIABLE by ambiguity 0: PASS
+  L1-4@0.2  correct 1.00 (>= 0.80), tracks ending UNRELIABLE by ambiguity 0, tracks that went UNRELIABLE by ambiguity 0: PASS
+  L1-5@0.0  correct 1.00 (>= 0.80), tracks ending UNRELIABLE by ambiguity 0, tracks that went UNRELIABLE by ambiguity 0: PASS
+  L1-5@0.2  correct 1.00 (>= 0.80), tracks ending UNRELIABLE by ambiguity 0, tracks that went UNRELIABLE by ambiguity 0: PASS
+
+A2 repeated_corrections duplicates per run (<= 0.2)
+  L1-4@0.0  before 0.200 -> after 0.000: PASS
+  L1-4@0.2  before 0.200 -> after 0.000: PASS
+  L1-5@0.0  before 0.600 -> after 0.000: PASS
+  L1-5@0.2  before 0.200 -> after 0.000: PASS

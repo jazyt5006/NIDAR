@@ -65,11 +65,19 @@ class FailureReason(str, Enum):
     OBSERVATION_OUTLIER = "OBSERVATION_OUTLIER"
     TRACK_INCONSISTENT = "TRACK_INCONSISTENT"
     ASSOCIATION_AMBIGUOUS = "ASSOCIATION_AMBIGUOUS"  # observation fits two tracks / two tracks too close
+    NEAR_DUPLICATE_OBSERVATION = "NEAR_DUPLICATE_OBSERVATION"  # 2nd box on the same body in one frame (substep 3.3a)
     FLOOR_UNKNOWN = "FLOOR_UNKNOWN"  # floor removal requested but no floor height configured
     EXTENDED_CLUSTER = "EXTENDED_CLUSTER"  # footprint refinement applied (partially visible extended body)
     CORRECTION_SOURCE_UNAVAILABLE = "CORRECTION_SOURCE_UNAVAILABLE"
     CONFIG_MISSING = "CONFIG_MISSING"
     CAPACITY_EXCEEDED = "CAPACITY_EXCEEDED"
+    # Layer 5 (substep 3.2)
+    POSE_NOT_CORRECTED = "POSE_NOT_CORRECTED"  # captured before a correction that gave no corrected pose for it
+    OBSERVATION_NOT_REDERIVABLE = "OBSERVATION_NOT_REDERIVABLE"  # evicted from the store, kept with its old position
+    FRAME_CORRECTION_APPLIED = "FRAME_CORRECTION_APPLIED"  # single map jump applied (ignores drift in the window)
+    CORRECTION_INVALID = "CORRECTION_INVALID"  # malformed correction / registration event
+    CORRECTION_CONFLICT = "CORRECTION_CONFLICT"  # same revision received twice with different content
+    CORRECTION_STALE = "CORRECTION_STALE"  # revision / version older than the retained history
 
 
 _R, _B, _D, _E = Severity.REJECT, Severity.BLOCK, Severity.DEGRADE, Severity.EVENT
@@ -105,11 +113,18 @@ FAILURE_SEVERITY: Dict[FailureReason, Severity] = {
     FailureReason.OBSERVATION_OUTLIER: _R,
     FailureReason.TRACK_INCONSISTENT: _D,
     FailureReason.ASSOCIATION_AMBIGUOUS: _D,
+    FailureReason.NEAR_DUPLICATE_OBSERVATION: _E,
     FailureReason.FLOOR_UNKNOWN: _D,
     FailureReason.EXTENDED_CLUSTER: _D,
     FailureReason.CORRECTION_SOURCE_UNAVAILABLE: _D,
     FailureReason.CONFIG_MISSING: _B,
     FailureReason.CAPACITY_EXCEEDED: _E,
+    FailureReason.POSE_NOT_CORRECTED: _D,
+    FailureReason.OBSERVATION_NOT_REDERIVABLE: _D,
+    FailureReason.FRAME_CORRECTION_APPLIED: _D,
+    FailureReason.CORRECTION_INVALID: _R,
+    FailureReason.CORRECTION_CONFLICT: _R,
+    FailureReason.CORRECTION_STALE: _R,
 }
 
 # Spec Part 10 "Failure" column text -> the code that handles it.
@@ -245,6 +260,53 @@ class PoseSample:
         if abs(float(np.linalg.norm(self.orientation_wxyz)) - 1.0) > quat_norm_tol:
             return FailureReason.POSE_INVALID
         return None
+
+
+CORRECTION_SOURCES = ("history", "frame_correction")
+
+
+@dataclass(frozen=True, eq=False)
+class PoseCorrection:
+    """SLAM correction event (Layer 5 input; spec 9.3). One interface, two sources:
+    - "history": corrected poses (all with pose_revision == revision) for a past time range.
+    - "frame_correction": one rigid jump T_new_old (4x4, corrected map <- old map, map->odom style), applied to
+      observations captured since the previous correction (it ignores drift inside that window).
+    stamp_ns (pose clock): when the correction happened (e.g. the loop closure). Observations captured before it with
+    an older pose revision are affected. revision: the new pose revision; revisions are monotonic per source."""
+
+    revision: int
+    source: str
+    stamp_ns: int
+    clock_domain: str
+    poses: Tuple[PoseSample, ...] = ()
+    T_new_old: Optional[np.ndarray] = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "poses", tuple(self.poses))
+        object.__setattr__(self, "T_new_old", _opt_vec(self.T_new_old, (4, 4), "T_new_old"))
+
+    @property
+    def range_ns(self) -> Optional[Tuple[int, int]]:
+        return (self.poses[0].stamp_ns, self.poses[-1].stamp_ns) if self.poses else None
+
+    def same_content(self, other: "PoseCorrection") -> bool:
+        """True if both events carry identical data (idempotence check)."""
+        if (self.revision, self.source, self.stamp_ns, self.clock_domain, len(self.poses)) !=                 (other.revision, other.source, other.stamp_ns, other.clock_domain, len(other.poses)):
+            return False
+        if (self.T_new_old is None) != (other.T_new_old is None):
+            return False
+        if self.T_new_old is not None and not np.array_equal(self.T_new_old, other.T_new_old):
+            return False
+        for a, b in zip(self.poses, other.poses):
+            if (a.stamp_ns, a.pose_revision, a.clock_domain) != (b.stamp_ns, b.pose_revision, b.clock_domain):
+                return False
+            if not (np.array_equal(a.position_m, b.position_m) and np.array_equal(a.orientation_wxyz,
+                                                                                    b.orientation_wxyz)):
+                return False
+            if (a.covariance is None) != (b.covariance is None) or (
+                    a.covariance is not None and not np.array_equal(a.covariance, b.covariance)):
+                return False
+        return True
 
 
 # ---------------------------------------------------------------------------
