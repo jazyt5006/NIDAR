@@ -3,7 +3,7 @@
 <package format="3">
   <name>survivor_tagging_ros</name>
   <version>0.1.0</version>
-  <description>ROS 2 wrapper of the survivor tagging library. Substep 4.1a: ROS-free adapters only, no nodes yet.</description>
+  <description>ROS 2 wrapper of the survivor tagging library. Substep 4.1a: ROS-free runtime and adapters plus a thin rclpy node.</description>
   <maintainer email="jainilagarwal20@gmail.com">survivor tagging maintainer</maintainer>
   <license>TODO: licence not decided</license>
 
@@ -13,6 +13,12 @@
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>rcl_interfaces</depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
 
   <test_depend>python3-pytest</test_depend>
 

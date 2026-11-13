@@ -237,6 +237,26 @@ def _build_params() -> List[ConfigParam]:
         _tune("grid.registration_version", "-", "int", 0, "bumped on any registration change (starts at 0)",
               rng=(0, 2**31 - 1)),
         _req("grid.registration_valid", "-", "bool", "false = never publish CONFIRMED official cells"),
+        _opt("grid.origin_sigma_m", "m", "float",
+             "1-sigma uncertainty of grid.origin_in_map_m per axis (registration error, common to all tags). Unset = "
+             "unknown: cell probabilities then ignore registration error and carry REG_UNCERTAINTY_UNKNOWN. "
+             "Suggested starting value for the mission config (ASSUMPTION, from the 2 ft launch area): 0.3 m",
+             rng=(0.0, 100.0), ref="substep 4.3"),
+        _opt("grid.yaw_sigma_rad", "rad", "float",
+             "1-sigma uncertainty of grid.yaw_map_to_grid_rad. Unset = unknown (REG_UNCERTAINTY_UNKNOWN). Suggested "
+             "starting value (ASSUMPTION, launch-area placement): 0.09 rad (5 deg)", rng=(0.0, 3.2), ref="substep 4.3"),
+        _tune("grid.wall_alignment_enabled", "-", "bool", False,
+              "estimate the registration from wall points assuming walls lie on grid lines (Q O1, NOT confirmed)",
+              ref="substep 4.3"),
+        _tune("grid.wall_align_min_quality", "-", "float", 0.5,
+              "wall-alignment quality (min over axes of the grid-line concentration, 0..1) below which no update is "
+              "made (ASSUMPTION)", rng=(0.0, 1.0), ref="substep 4.3"),
+        _tune("grid.reg_update_min_yaw_rad", "rad", "float", 0.002,
+              "hysteresis: an estimated registration changes the live one only if yaw moves by at least this (or the "
+              "origin by the offset threshold) (ASSUMPTION, about 0.11 deg)", rng=(0.0, 1.0), ref="substep 4.3"),
+        _tune("grid.reg_update_min_offset_m", "m", "float", 0.02,
+              "hysteresis: origin change below this (and yaw change below its threshold) triggers no recompute "
+              "(ASSUMPTION)", rng=(0.0, 10.0), ref="substep 4.3"),
         _tune("grid.max_candidate_cells", "count", "int", 4, "candidate cells kept with probabilities",
               rng=(1, 100), ref="substep 2.4"),
         _tune("grid.boundary_margin_m", "m", "float", 0.1, "floor of covariance-derived edge margin",

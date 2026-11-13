@@ -787,6 +787,7 @@ class Layer4:
             observation_count=t.n_frames, effective_independent_count=float(t.n_bins),
             first_seen_ns=t.first_seen_ns, last_seen_ns=t.last_seen_ns, capture_stamp_ns=t.last_seen_ns,
             update_stamp_ns=self.now_ns or t.last_seen_ns, map_revision=rev, registration_version=self.reg.version,
-            extrinsic_version=max(ext) if ext else None, reasons=tuple(t.warnings),
+            extrinsic_version=max(ext) if ext else None,
+            reasons=tuple(t.warnings) + (() if self.reg.uncertainty_known else (FailureReason.REG_UNCERTAINTY_UNKNOWN,)),
             confirmed_stamp_ns=t.confirmed_ns if confirmed else None, cell_changes=t.cell_changes,
         )

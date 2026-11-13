@@ -39,7 +39,22 @@ def registration_overrides(reg: Registration, n_cells_x: int, n_cells_y: int) ->
         "grid.index_base": 0,
         "grid.numbering": "ij",
         "grid.registration_valid": True,
+        # SIM: the simulated registration is exact unless a scenario/experiment overrides these (substep 4.3); 0.0 =
+        # known exactly, which keeps the pre-4.3 probabilities and avoids REG_UNCERTAINTY_UNKNOWN in simulation.
+        "grid.origin_sigma_m": 0.0,
+        "grid.yaw_sigma_rad": 0.0,
     }
+
+
+def library_registration(reg: Registration, n_cells: int, **changes):
+    """The library GridRegistration (valid, version 0) that corresponds to a simulator Registration, built from the
+    public map_from_grid only (like registration_overrides). `changes` are dataclass fields, e.g. origin_sigma_m."""
+    from .grid import GridRegistration
+
+    ov = registration_overrides(reg, n_cells, n_cells)
+    return replace(GridRegistration(origin_in_map_m=tuple(ov["grid.origin_in_map_m"]), yaw_rad=ov["grid.yaw_map_to_grid_rad"],
+                                    cell_size_m=reg.cell_size_m, n_cells_x=n_cells, n_cells_y=n_cells, valid=True),
+                   **changes)
 
 
 def correction_source(scn: Scenario) -> str:
@@ -79,7 +94,7 @@ def naive_l1_factory(overrides: Optional[dict] = None) -> PipelineFactory:
     return naive_layer1_factory(sim_layer1_config(overrides))
 
 
-__all__ = ["layer123_factory", "layer1234_factory", "layer5_factory", "naive_factory", "naive_l1_factory",
+__all__ = ["library_registration", "layer123_factory", "layer1234_factory", "layer5_factory", "naive_factory", "naive_l1_factory",
            "registration_overrides", "scenario_config", "SimLayer5Pipeline"]
 
 

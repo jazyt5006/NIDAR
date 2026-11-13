@@ -71,6 +71,11 @@ class AdapterConfig:
     depth_min_m: Optional[float] = None  # = l1.depth_min_m
     depth_max_m: Optional[float] = None  # = l1.depth_max_m
     image_scale_tolerance: float = 0.01  # ASSUMPTION: |sx / sy - 1| allowed when scaling a box to the depth image
+    # Used ONLY when the incoming pose covariance is unknown (all zero or cov[0] == -1); the pose then carries
+    # covariance_assumed=True and every derived tag POSE_COV_ASSUMED. None for either value disables the default (the
+    # pose then has no covariance, i.e. it claims to be exact). Replace when the pose source is known (question S1).
+    pose_default_position_sigma_m: Optional[float] = 0.10  # ASSUMPTION, parameter pose.default_position_sigma_m
+    pose_default_yaw_sigma_rad: Optional[float] = 0.05  # ASSUMPTION, parameter pose.default_yaw_sigma_rad
 
     def require(self, *names: str) -> None:
         missing = [n for n in names if getattr(self, n) is None]
@@ -214,20 +219,26 @@ def intrinsics_from_camera_info(info: Any) -> CameraIntrinsics:
     return intr
 
 
-def depth_measurement_from_msgs(img: Any, info: Any, cfg: AdapterConfig,
-                                monitor: Optional[StampMonitor] = None) -> DepthMeasurement:
-    """Depth Image + CameraInfo -> DepthMeasurement. The image size must equal the CameraInfo size. The alignment flag
-    comes ONLY from cfg.depth_aligned_to_color (unset -> ConfigurationError)."""
+def depth_measurement_from_image(img: Any, intr: CameraIntrinsics, cfg: AdapterConfig,
+                                 monitor: Optional[StampMonitor] = None) -> DepthMeasurement:
+    """Depth Image + already parsed intrinsics -> DepthMeasurement (see depth_measurement_from_msgs)."""
     cfg.require("clock_domain", "depth_aligned_to_color", "depth_min_m", "depth_max_m")
     stamp = header_stamp_ns(img.header, monitor)
     raw, scale = depth_image_to_raw(img)
-    intr = intrinsics_from_camera_info(info)
     if raw.shape != (intr.height_px, intr.width_px):
         raise AdapterError(FailureReason.INTRINSICS_MISSING,
                            f"depth image {raw.shape[1]}x{raw.shape[0]} differs from CameraInfo "
                            f"{intr.width_px}x{intr.height_px}")
     return DepthMeasurement(stamp, cfg.clock_domain, _frame_id(img.header), raw, scale, intr,
                             bool(cfg.depth_aligned_to_color), (float(cfg.depth_min_m), float(cfg.depth_max_m)))
+
+
+def depth_measurement_from_msgs(img: Any, info: Any, cfg: AdapterConfig,
+                                monitor: Optional[StampMonitor] = None) -> DepthMeasurement:
+    """Depth Image + CameraInfo -> DepthMeasurement. The image size must equal the CameraInfo size. The alignment flag
+    comes ONLY from cfg.depth_aligned_to_color (unset -> ConfigurationError)."""
+    cfg.require("clock_domain", "depth_aligned_to_color", "depth_min_m", "depth_max_m")
+    return depth_measurement_from_image(img, intrinsics_from_camera_info(info), cfg, monitor)
 
 
 # ---------------------------------------------------------------------------
@@ -359,6 +370,20 @@ def library_covariance_to_ros(cov: Optional[np.ndarray]) -> List[float]:
     return [0.0] * 36 if cov is None else [float(v) for v in np.asarray(cov, dtype=float).reshape(36)]
 
 
+def default_pose_covariance(cfg: AdapterConfig) -> Optional[np.ndarray]:
+    """6x6 default for a pose without covariance: diag(sp^2, sp^2, sp^2, sa^2, sa^2, sa^2) in the library order (x, y, z,
+    rotation about fixed x, y, z of the map frame), sp = pose_default_position_sigma_m, sa = pose_default_yaw_sigma_rad
+    (also used for roll and pitch: ASSUMPTION, the conservative choice while no attitude source is known). None if
+    either value is unset."""
+    sp, sa = cfg.pose_default_position_sigma_m, cfg.pose_default_yaw_sigma_rad
+    if sp is None or sa is None:
+        return None
+    if not (math.isfinite(sp) and math.isfinite(sa) and sp > 0 and sa > 0):
+        raise ConfigurationError([f"pose.default_position_sigma_m / pose.default_yaw_sigma_rad must be > 0 "
+                                  f"(got {sp!r}, {sa!r})"])
+    return np.diag([sp * sp] * 3 + [sa * sa] * 3)
+
+
 def pose_from_msg(msg: Any, cfg: AdapterConfig, pose_revision: int = 0, source: str = "ros",
                   monitor: Optional[StampMonitor] = None) -> PoseSample:
     """PoseWithCovarianceStamped or nav_msgs/Odometry (both: header, pose.pose, pose.covariance; Odometry also
@@ -387,8 +412,12 @@ def pose_from_msg(msg: Any, cfg: AdapterConfig, pose_revision: int = 0, source: 
     if cfg.body_convention == "FRD":
         q = frd_to_flu_quaternion(q)
     cov = ros_covariance_to_library(msg.pose.covariance)
+    assumed = False
+    if cov is None:
+        cov = default_pose_covariance(cfg)
+        assumed = cov is not None
     return PoseSample(stamp, cfg.clock_domain, frame, str(cfg.body_frame_id).lstrip("/"), pos, q, True,
-                      int(pose_revision), source, cov)
+                      int(pose_revision), source, cov, assumed)
 
 
 # ---------------------------------------------------------------------------

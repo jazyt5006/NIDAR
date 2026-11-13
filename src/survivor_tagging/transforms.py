@@ -225,7 +225,8 @@ def interpolate_pose(p0: PoseSample, p1: PoseSample, t_ns: int) -> Tuple[PoseSam
         a = min(max(alpha, 0.0), 1.0)
         cov = (1 - a) * p0.covariance + a * p1.covariance
     pose = PoseSample(t_ns, p0.clock_domain, p0.frame_id, p0.child_frame_id, pos, q, True,
-                      max(p0.pose_revision, p1.pose_revision), "interpolated", cov)
+                      max(p0.pose_revision, p1.pose_revision), "interpolated", cov,
+                      p0.covariance_assumed or p1.covariance_assumed)
     return pose, alpha
 
 
@@ -294,12 +295,15 @@ class PoseBuffer:
             i = bisect.bisect_left(self._stamps, t_ns)
             if self._stamps[i] == t_ns:
                 p = self._poses[i]
-                return PoseLookup(p, None, (p.stamp_ns, p.stamp_ns), 0.0, p.pose_revision, (), p.pose_revision)
+                return PoseLookup(p, None, (p.stamp_ns, p.stamp_ns), 0.0, p.pose_revision,
+                                  (FailureReason.POSE_COV_ASSUMED,) if p.covariance_assumed else (), p.pose_revision)
             p0, p1 = self._poses[i - 1], self._poses[i]
             if p1.stamp_ns - p0.stamp_ns > max_gap_ns:
                 return PoseLookup(None, FailureReason.POSE_GAP_TOO_LARGE)
         pose, alpha = interpolate_pose(p0, p1, t_ns)
         warn = (FailureReason.SLAM_CORRECTION_APPLIED,) if p0.pose_revision != p1.pose_revision else ()
+        if pose.covariance_assumed:
+            warn = warn + (FailureReason.POSE_COV_ASSUMED,)
         return PoseLookup(pose, None, (p0.stamp_ns, p1.stamp_ns), alpha, pose.pose_revision, warn,
                           min(p0.pose_revision, p1.pose_revision))
 
@@ -321,7 +325,7 @@ def apply_frame_jump(pose: PoseSample, t_new_old: np.ndarray, revision: int) -> 
         j[3:, 3:] = r
         cov = j @ pose.covariance @ j.T
     return PoseSample(pose.stamp_ns, pose.clock_domain, pose.frame_id, pose.child_frame_id, t, q, pose.valid, revision,
-                      pose.source + "+frame_correction", cov)
+                      pose.source + "+frame_correction", cov, pose.covariance_assumed)
 
 
 # ---------------------------------------------------------------------------

@@ -23,6 +23,7 @@ from .corrections import (LAYER4_OBS_CODES, AppliedCorrection, CorrectionHistory
 from .footprint import FootprintParams, refine_observation
 from .geometry import Layer1Params, estimate_survivor_point
 from .grid import GridRegistration, apply_grid
+from .registration import WallAlignParams, WallAlignResult, estimate_wall_alignment, update_needed
 from .output import PublishedTag, TelemetryMessage, TelemetryParams, TelemetryScheduler
 from .tracking import Layer4, Layer4Params
 from .transforms import (NS_PER_S, Layer2, Layer2Params, PendingItem, extrinsic_from_config, floor_plane_in_camera,
@@ -342,6 +343,14 @@ class Layer5Pipeline(Layer1234Pipeline):
         # runs job.run() on a worker thread and then calls complete_rebuild(job) on this pipeline's thread).
         self.job_sink: Optional[Callable[["RebuildJob"], None]] = None
         self._epoch = 0  # number of rebuilds started; a job whose epoch is not the latest is stale
+        self.publish_seq = 0  # incremented whenever the published tag list is rebuilt (substep 4.1b)
+        # Substep 4.3: wall-alignment registration estimate (OFF unless grid.wall_alignment_enabled; assumes walls on
+        # grid lines, open question O1).
+        self.wall_align_enabled = bool(cfg.value("grid.wall_alignment_enabled"))
+        self.wall_align_params = WallAlignParams.from_config(cfg)
+        self.reg_min_yaw_rad = cfg.value("grid.reg_update_min_yaw_rad")
+        self.reg_min_offset_m = cfg.value("grid.reg_update_min_offset_m")
+        self.wall_alignments: Deque[WallAlignResult] = deque(maxlen=16)
 
     # --- inputs -------------------------------------------------------------------------------------------
     def process_pose(self, pose: PoseSample, arrival_ns: int) -> None:
@@ -355,6 +364,18 @@ class Layer5Pipeline(Layer1234Pipeline):
     def process_frame(self, detections: Sequence[Detection], depth: DepthMeasurement,
                       intrinsics: CameraIntrinsics, arrival_ns: int) -> None:
         super().process_frame(detections, depth, intrinsics, arrival_ns)
+        self._after(arrival_ns)
+
+    def advance(self, arrival_ns: int) -> None:
+        """Move the pipeline clock forward without new data (substep 4.1b): expire detections that waited too long for
+        a pose, flush pending observations, apply the missing-correction timeout and run the telemetry schedule
+        (snapshot period, rate-limited updates). `arrival_ns` is a receive/arrival time, never a capture time; it
+        never moves backwards."""
+        if self.now_ns is not None:
+            arrival_ns = max(arrival_ns, self.now_ns)
+        self.now_ns = arrival_ns
+        self._expire()
+        self._flush()
         self._after(arrival_ns)
 
     def process_correction(self, c: PoseCorrection, arrival_ns: int) -> CorrectionOutcome:
@@ -383,6 +404,31 @@ class Layer5Pipeline(Layer1234Pipeline):
             out = CorrectionOutcome(True, reg.version)
         self.outcomes.append((arrival_ns, out))
         self._after(arrival_ns)
+        return out
+
+    def process_wall_points(self, points_map_xy, arrival_ns: int) -> CorrectionOutcome:
+        """Estimate the grid registration from 2D wall points (map frame) with the CURRENT registration as the coarse
+        one, and apply it through process_registration (new version, full Layer 5 recompute, revision ids) unless
+        (a) grid.wall_alignment_enabled is false, (b) the estimator gives no update (reason code kept in
+        `wall_alignments`), or (c) the change is below the hysteresis thresholds. Every refusal is an explicit
+        CorrectionOutcome(applied=False, reason=...)."""
+        self.now_ns = arrival_ns
+        if not self.wall_align_enabled:
+            out = CorrectionOutcome(False, self.grid.version, FailureReason.WALL_ALIGNMENT_DISABLED,
+                                    "grid.wall_alignment_enabled is false")
+            self.outcomes.append((arrival_ns, out))
+            return out
+        res = estimate_wall_alignment(points_map_xy, self.grid, self.wall_align_params)
+        self.wall_alignments.append(res)
+        if res.registration is None:
+            out = CorrectionOutcome(False, self.grid.version, res.reason, res.detail)
+        elif not update_needed(self.grid, res.registration, self.reg_min_yaw_rad, self.reg_min_offset_m):
+            out = CorrectionOutcome(False, self.grid.version, FailureReason.REG_UPDATE_BELOW_THRESHOLD,
+                                    f"change below hysteresis (yaw {self.reg_min_yaw_rad} rad, "
+                                    f"offset {self.reg_min_offset_m} m)")
+        else:
+            return self.process_registration(res.registration, arrival_ns)
+        self.outcomes.append((arrival_ns, out))
         return out
 
     # --- outputs ------------------------------------------------------------------------------------------
@@ -646,6 +692,7 @@ class Layer5Pipeline(Layer1234Pipeline):
         self._check_missing(now_ns)
         if self._dirty:
             self._published = self.book.publish(self.l4, self._cause, self.map_revision, item_reasons)
+            self.publish_seq += 1
             self._dirty, self._cause = False, "layer4"
         msgs = self.telemetry.step(now_ns, self._published, self.book.pop_removed(), self.map_revision,
                                    self.grid.version, self.grid.valid)

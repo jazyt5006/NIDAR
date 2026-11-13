@@ -1,17 +1,21 @@
-# ROS 2 interfaces of the survivor tagging subsystem (handoff, substep 4.1a)
+# ROS 2 interfaces of the survivor tagging subsystem (handoff, substeps 4.1a and 4.1b)
 
-Status: **interface proposal, unit tested without ROS**. The message files and the adapters were written on a Windows
-machine that cannot run ROS, so nothing here has been built with colcon, run in a node, or tested on a robot. The first
-job on the Ubuntu laptop is `colcon build` of the two packages and the checks in the last section. Every topic name,
+Status: **interface proposal, unit tested without ROS**. The message files, the adapters, the runtime and the node were
+written on a Windows machine that cannot run ROS: the runtime and adapters are unit and simulation tested there; the
+message build, the rclpy node, the launch file and the smoke test's ROS mode are **not run**. The build and test steps for
+the Ubuntu laptop are in `docs/handoff/ros_runbook.md`. Every topic name,
 QoS choice and parameter default below is an ASSUMPTION unless it says otherwise. Written for both Humble and Jazzy
 (only stable rclpy features: topics, services, parameters, timers, QoS profiles).
 
 Packages (both under `ros2/`):
 - `survivor_tagging_msgs` (ament_cmake, rosidl): the message and service files below.
 - `survivor_tagging_ros` (ament_python): `survivor_tagging_ros/adapters.py` (pure Python + numpy; ROS messages are
-  duck-typed, produced messages are plain dicts with the field names of the `.msg` files) and `msgdef.py` (a small
-  `.msg` parser used by tests). **No nodes exist yet** (that is substep 4.1b). The library `survivor_tagging`
-  (repo `src/`) must be installed in the same Python (`pip install -e .` from the repo root); it has no ROS dependency.
+  duck-typed, produced messages are plain dicts with the field names of the `.msg` files), `runtime.py`
+  (`TaggerRuntime`: everything the node does except talking to ROS), `convert.py` (dict to message object), `tagger_node.py`
+  (the rclpy shell, forwards only), `smoke_test.py`, `sim_bridge.py` (simulator to messages, test side only) and
+  `msgdef.py` (a small `.msg` parser used by tests). Launch: `launch/tagger.launch.py`; parameters: `config/tagger.params.yaml`.
+  The library `survivor_tagging` (repo `src/`) must be installed in the same Python (`pip install -e .` from the repo
+  root); it has no ROS dependency.
 
 ## The timestamp requirement
 
@@ -25,19 +29,31 @@ NOT be used to fill `header.stamp`. The adapters reject zero, negative and malfo
 The depth image stamp and the pose stamps must be on the same ROS clock; the library compares them only through
 `clock.camera_to_pose_offset_ns` (unset, Q S3).
 
-## Topics, services and types (all names ASSUMPTION)
+## Topics, services and types (all names ASSUMPTION; every one is a parameter of the node)
 
-| Direction | Name | Type | Notes |
+| Direction | Default name | Type | Notes |
 |---|---|---|---|
-| in | `/camera/aligned_depth_to_color/image_raw` | `sensor_msgs/Image`, 16UC1 (mm, 0 = invalid) or 32FC1 (m) | depth aligned to colour (Q D2); `step` honoured |
-| in | `/camera/aligned_depth_to_color/camera_info` | `sensor_msgs/CameraInfo` | intrinsics from `k`; size must equal the image |
-| in | `/survivor_tagging/detections` | `survivor_tagging_msgs/DetectionArray` | stamp = capture time, frame_id = optical frame of that image |
-| in | `/slam/pose` | `geometry_msgs/PoseWithCovarianceStamped` or `nav_msgs/Odometry` | body pose in the map frame |
-| in | `/slam/correction` | `survivor_tagging_msgs/CorrectionEvent` | `history` or `frame_correction` (Q S4) |
+| in | `/camera/aligned_depth_to_color/image_raw` | `sensor_msgs/Image`, 16UC1 (mm, 0 = invalid) or 32FC1 (m) | depth aligned to colour (Q D2); `step` honoured; best-effort |
+| in | `/camera/aligned_depth_to_color/camera_info` | `sensor_msgs/CameraInfo` | intrinsics from `k`; size must equal the image; best-effort |
+| in | `/survivor_tagging/detections` | `survivor_tagging_msgs/DetectionArray` | stamp = capture time, frame_id = optical frame of that image; reliable |
+| in | `/slam/pose` | `geometry_msgs/PoseWithCovarianceStamped` or `nav_msgs/Odometry` (parameter `pose_topic_type`) | body pose in the map frame; best-effort |
+| in | `/slam/correction` | `survivor_tagging_msgs/CorrectionEvent` | `history` or `frame_correction` (Q S4); reliable + transient local |
 | srv | `/survivor_tagging/set_grid_registration` | `survivor_tagging_msgs/SetGridRegistration` | official grid (Q O1); nothing is guessed |
-| srv | `/survivor_tagging/commit_final_tags` | `survivor_tagging_msgs/CommitFinalTags` | end-of-mission policy (Q O2) |
-| out | `/survivor_tagging/tags` | `survivor_tagging_msgs/SurvivorTagArray` | all fields of the library `Tag` plus tag revision |
-| out | `/survivor_tagging/telemetry` | `survivor_tagging_msgs/TelemetryPacket` | library codec bytes for the radio (25 B record / snapshot) |
+| srv | `/survivor_tagging/commit_final_tags` | `survivor_tagging_msgs/CommitFinalTags` | end-of-mission policy (Q O2); waits for in-flight rebuilds |
+| out | `/survivor_tagging/tags` | `survivor_tagging_msgs/SurvivorTagArray` | all fields of the library `Tag` plus tag revision; reliable + transient local |
+| out | `/survivor_tagging/markers` | `visualization_msgs/MarkerArray` | per tag a flat cell square (map frame, only if the registration is valid) and a text label; colour by status (grey candidate, yellow provisional, green confirmed, blue updated, red unreliable); a removed tag deletes both; reliable + transient local |
+| out | `/survivor_tagging/telemetry` | `survivor_tagging_msgs/TelemetryPacket` | library codec bytes for the radio: snapshot every 5 s (and on revision changes), updates rate-limited to one per tag per 1 s (frozen values); reliable |
+| out | `/survivor_tagging/diagnostics` | `std_msgs/String` (JSON text, 1 Hz) | rejections by reason code, message counts, pose lag, queue sizes, last recompute duration and cause, pose / map / registration revisions |
+
+Rejection keys in the diagnostics are library failure codes, optionally with a sub-reason after a colon, for example
+`RGB_DEPTH_TIME_MISMATCH:no_depth_buffered`, `RGB_DEPTH_TIME_MISMATCH:skew_exceeded`, `INTRINSICS_MISSING:no_camera_info`,
+`TIMESTAMP_INVALID`, `FRAME_MISMATCH`, `DEPTH_FRAME_MISMATCH`, `CORRECTION_STALE`.
+
+Behaviour worth knowing: a depth image is matched to a detection array by the nearest stamp within `l2.max_rgb_depth_skew_s` (unset:
+configuration error); the pose revision used for live poses is the number of applied correction events (or the SLAM revision number if
+larger); a full recompute after a correction or a new registration runs on a worker thread and is swapped in atomically (the old tags stay
+published until then); `commit_final_tags` first waits for it. Thread safety: one lock protects all pipeline state; the worker touches only a
+private snapshot.
 
 Message sizes (CDR estimate from `msgdef.cdr_size`, simulation-like content with 3 candidate cells and 2 warnings):
 `SurvivorTag` 304 B, `SurvivorTagArray` with 6 tags 1810 B, `TelemetryPacket` with one 25-byte record 53 B. The radio
@@ -54,7 +70,8 @@ link (ASSUMED 20 kbit/s, Q H5) only ever carries `TelemetryPacket` payloads, nev
 | Official grid | from `SetGridRegistration`; the SLAM origin is not assumed to be the grid origin | Q O1, unset until answered |
 | Camera frame | optical: x right, y down, z forward; the detection `header.frame_id` must equal the depth image frame id | check on the robot |
 | Pose covariance | ROS 6x6 row-major, order x, y, z, rotation about FIXED x, y, z of the message frame = library layout (reshape only); unaffected by FRD/FLU. All zeros or `cov[0] == -1` is treated as "unknown" (None), never as a perfect pose | tested with a non-diagonal example |
-| `pose_revision` | not in ROS pose messages; the node increments it for each applied `CorrectionEvent` (ASSUMPTION) | needs the SLAM owner's answer (S4) |
+| `pose_revision` | not in ROS pose messages; the runtime increments it for each applied `CorrectionEvent` (ASSUMPTION) | needs the SLAM owner's answer (S4) |
+| Unknown pose covariance | all zeros or `cov[0] == -1` means unknown. The adapter then uses `diag(sp^2 x3, sa^2 x3)` with `pose.default_position_sigma_m` 0.10 and `pose.default_yaw_sigma_rad` 0.05 (also for roll and pitch), marks the pose `covariance_assumed`, and every derived tag carries the non-blocking warning `POSE_COV_ASSUMED` | ASSUMPTION; replace once the pose source is known (Q S1) |
 
 Open point for the SLAM owner: a FRD body orientation relative to an ENU world is unusual (FRD normally goes with NED).
 The adapter converts the body axes only; if the published orientation already refers to a NED-based or otherwise rotated
@@ -73,23 +90,25 @@ world, the pose would be wrong and the first end-to-end test would show it (the 
 
 ## Parameters
 
-Status: **unset** = no value, the adapter raises `ConfigurationError` (reason CONFIG_MISSING); **ASSUMPTION** = a
-default we chose, label it in the launch file; **from freeze** = value or status in `configs/frozen_synthetic_v1.json`.
+Status: **unset** = no value, the node refuses to start (`ConfigurationError` naming the parameter); **ASSUMPTION** = a
+default we chose, labelled in the params file; **from freeze** = `configs/frozen_synthetic_v1.json` (applied through `config_file`).
 
-| ROS parameter | Library parameter | Status |
+| Node parameter (tagger_node) | Library parameter | Status |
 |---|---|---|
-| `map_frame_id` | - | unset (name of the SLAM map frame) |
-| `body_frame_id` | - | unset (child frame of the pose) |
-| `body_convention` | - | unset (FLU or FRD); FRD is what the detection team's README says |
-| `clock_domain` | - | unset (label for stamps, e.g. `ros_time`) |
-| `depth_aligned_to_color` | `cam.detections_use_depth_aligned_frame` | unset (Q D2) |
-| `depth_min_m`, `depth_max_m` | `l1.depth_min_m`, `l1.depth_max_m` | unset (from freeze: needs measurement; the simulation uses 0.1 and 10 m, not hardware) |
-| `image_scale_tolerance` | - | ASSUMPTION 0.01 (|sx/sy - 1| allowed when a box is scaled to the depth image) |
-| `extr.T_body_camera` and covariance | `extr.*` | unset (Q H4), required |
-| `clock.camera_to_pose_offset_ns` | `clock.*` | unset (Q S3), required |
-| `l2.max_interp_gap_s`, `l2.max_rgb_depth_skew_s`, `l2.pose_mode` | same | unset, required |
-| `l5.correction_source` | same | unset (none / history / frame_correction, Q S4) |
-| `l5.end_of_mission_commit_policy` | same | unset (Q O2); interim simulation choice `expected_value` 0.667, not a default |
+| `config_file` | all tuning values | path of the frozen JSON; empty = library defaults (same values) |
+| `overrides_file` | `extr.T_body_camera_cov`, `extr.version`, `clock.*`, `l1.depth_min_m`, `l1.depth_max_m`, `l1.depth_noise_model`, `l2.max_interp_gap_s`, `l2.max_rgb_depth_skew_s`, `l2.pose_mode`, `grid.*`, `l5.correction_source` | unset: a flat library override JSON (`configs/example_synthetic.json` shows the keys; its values are TEST values). `smoke_test --write-sim-overrides` writes a simulator one |
+| `T_body_camera` | `extr.T_body_camera` | unset (16 values row-major; Q H4); overrides the file |
+| `pose_frame` | map frame | unset |
+| `body_frame` | pose child frame | unset |
+| `body_frame_convention` | - | ASSUMPTION default FLU (the detection team's README says FRD) |
+| `clock_domain` | - | ASSUMPTION `ros_time` (a label; all stamps must be on one ROS clock) |
+| `depth_aligned_to_color` | `cam.detections_use_depth_aligned_frame` | unset (`"true"`/`"false"`, Q D2); unset in the node AND the overrides file is an error |
+| `pose.default_position_sigma_m`, `pose.default_yaw_sigma_rad` | - | ASSUMPTION 0.10 m, 0.05 rad, only for unknown covariance; `UNSET` disables |
+| `pose_topic_type`, topic names, `tick_period_s` | - | ASSUMPTION |
+| `depth_buffer_size` 8, `pose_max_backward_s` 0.0, `rebuild_in_thread` true | - | ASSUMPTION |
+| `use_sim_time` | - | native ROS parameter; true when a simulator provides `/clock`, then for EVERY node |
+| `image_scale_tolerance` | - | ASSUMPTION 0.01 (adapter default; not a node parameter yet) |
+| `l5.end_of_mission_commit_policy` | same | unset (Q O2); the `commit_final_tags` request names the policy; interim simulation choice `expected_value` 0.667 |
 | all `l1.*`, `l4.*`, `l5.*` tuning values | same | from freeze (ASSUMPTION / simulation tested only) |
 
 Detections with a different image size than the depth image are scaled to the depth image only if
@@ -114,8 +133,6 @@ DEPTH_FRAME_MISMATCH. Detections carry no tracking id (`-1`); the library treats
 
 ## First checks on the Ubuntu laptop (not done here)
 
-1. `colcon build --packages-select survivor_tagging_msgs survivor_tagging_ros` on Humble and on Jazzy.
-2. `ros2 interface show survivor_tagging_msgs/msg/SurvivorTag` equals `msg/SurvivorTag.msg`; field names match the dicts
-   (a test already checks the files against the dicts, not against the generated code).
-3. Run `python -m pytest tests/test_ros_adapters.py tests/test_ros_msgs.py` from the repo root on that machine too.
-4. Compare `header.stamp` of a detection message with the image header it came from (must be equal).
+Follow `docs/handoff/ros_runbook.md` (build, tests, launch, smoke test, files to send back). In short: `colcon build` of both packages on
+the colleague's distro; `tests/test_ros_node.py` (skipped without rclpy); `smoke_test --dry-run`, then `smoke_test` against the running node;
+and compare `header.stamp` of a detection message with the image header it came from (must be equal).

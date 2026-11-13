@@ -82,7 +82,7 @@ BODY_DEPTH_MODELS: Dict[str, Optional[Tuple[float, float]]] = {
 
 
 def all_scenarios(placement: str = "random_in_cell", body_depth: str = "fixed",
-                  with_two_close: bool = False) -> Dict[str, Scenario]:
+                  with_two_close: bool = False, with_registration_error: bool = False) -> Dict[str, Scenario]:
     """All named scenarios. With "random_in_cell" (default) each survivor centre is drawn per seed inside its
     cell, or inside the narrower region a scenario states to keep its walls/occlusion valid; "nominal" uses the
     authored centres. with_two_close=True appends the two_close_survivors family (substep 3.3b; its pairs are 0.30-0.60 m
@@ -134,6 +134,8 @@ def all_scenarios(placement: str = "random_in_cell", body_depth: str = "fixed",
     s += _layer33a_scenarios()
     if with_two_close:
         s += _two_close_scenarios()
+    if with_registration_error:
+        s += _registration_error_scenarios()
     if placement != "random_in_cell":
         s = [replace(x, placement=placement) for x in s]
     if BODY_DEPTH_MODELS[body_depth] is not None:
@@ -320,4 +322,40 @@ def _two_close_scenarios():
             f"({'adjacent cells (3,2) and (3,3)' if adj else 'same cell (3,3)'}), side by side for the camera; "
             "tests whether a close real neighbour is lost as a near-duplicate",
             (SurvivorSpec(1, (3.5, y1), p1, region=r1), SurvivorSpec(2, (3.5, y2), p2, region=r2))))
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Substep 4.3 scenarios: the configured grid registration is wrong. SIMULATION values.
+# ---------------------------------------------------------------------------
+
+REG_ERROR_YAW_RAD = math.radians(3.0)  # SIM: configured yaw minus true yaw
+REG_ERROR_OFFSET_M = 0.2  # SIM: length of (configured - true) offset, grid frame
+REG_ERROR_ORIGIN_SIGMA_M = REG_ERROR_OFFSET_M / math.sqrt(2.0)  # per axis: rms |error| of 2 axes = 0.2 m ("matching")
+REG_ERROR_YAW_SIGMA_RAD = REG_ERROR_YAW_RAD
+NEW_IN_43 = ("registration_error", "registration_error_mid", "registration_error_far", "registration_error_far_neg")
+
+
+def _registration_error_scenarios():
+    """The pipeline is configured with a registration that differs from the truth by 3 deg and 0.2 m and never gets a
+    correction. The map origin is where the SLAM map started (the drone's start); the survivor is increasingly far from
+    it, so the yaw error moves the tag by (distance x 3 deg): 0.2 m (near), 0.3 m (mid), 0.5 m (far)."""
+    out = []
+    for name, sign, true_reg, n_cells, path, xy, region in (
+            ("registration_error", 1.0, SIM_REGISTRATION, 6, BASE_PATH_GRID, (3.5, 3.5), None),
+            ("registration_error_mid", -1.0, SIM_REGISTRATION, 6, ((2.6, 5.1), (3.0, 5.5)), (5.0, 5.3),
+             ((4.7, 5.3), (5.0, 5.5))),
+            ("registration_error_far", 1.0, Registration(offset_m=(0.6, 0.6), yaw_rad=0.25), 10,
+             ((6.0, 8.3), (6.4, 8.7)), (8.5, 8.5), None),
+            ("registration_error_far_neg", -1.0, Registration(offset_m=(0.6, 0.6), yaw_rad=0.25), 10,
+             ((6.0, 6.3), (6.4, 6.7)), (8.5, 6.5), None)):
+        direction = np.array([0.6, -0.8]) * sign  # unit vector, grid frame
+        configured = Registration(
+            offset_m=tuple(np.asarray(true_reg.offset_m) + REG_ERROR_OFFSET_M * direction),
+            yaw_rad=true_reg.yaw_rad + sign * REG_ERROR_YAW_RAD, cell_size_m=true_reg.cell_size_m)
+        scn = make_scenario(name, f"configured registration off by {sign * 3:+.0f} deg and {REG_ERROR_OFFSET_M} m "
+                            f"(never corrected); survivor {np.hypot(*(np.asarray(xy) - np.asarray(true_reg.offset_m))):.1f} m "
+                            "from the map origin", _one("standing", xy, region=region), path_grid=path,
+                            registration=true_reg, n_cells=n_cells)
+        out.append(replace(scn, initial_registration=configured))
     return out

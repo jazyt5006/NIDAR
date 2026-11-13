@@ -49,6 +49,11 @@ class GridRegistration:
     version: int = 0
     valid: bool = False
     missing: Tuple[str, ...] = ()  # unset parameters replaced by provisional values (diagnostics only)
+    # Registration uncertainty (substep 4.3). None = unknown (REG_UNCERTAINTY_UNKNOWN; treated as no extra error in the
+    # probabilities, never as a made-up value). origin_cov_m2 (2x2, map frame, m^2) overrides origin_sigma_m.
+    origin_sigma_m: Optional[float] = None
+    yaw_sigma_rad: Optional[float] = None
+    origin_cov_m2: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None
 
     @classmethod
     def from_config(cls, cfg: Config) -> "GridRegistration":
@@ -65,6 +70,7 @@ class GridRegistration:
             index_base=v("grid.index_base") or 0, numbering=v("grid.numbering") or "ij",
             boundary_rule=v("grid.boundary_rule"), version=v("grid.registration_version"),
             valid=bool(v("grid.registration_valid")) and not missing, missing=missing,
+            origin_sigma_m=v("grid.origin_sigma_m"), yaw_sigma_rad=v("grid.yaw_sigma_rad"),
         )
 
     def updated(self, **changes) -> "GridRegistration":
@@ -78,6 +84,42 @@ class GridRegistration:
     def jacobian(self) -> np.ndarray:
         """d(grid xy)/d(map xy) = diag(s) R(-yaw)."""
         return np.diag(self._signs()) @ _rot(-self.yaw_rad)
+
+    # --- registration uncertainty (substep 4.3) --------------------------------------------------------------
+    @property
+    def uncertainty_known(self) -> bool:
+        """True if both the origin and the yaw uncertainty are configured."""
+        return (self.origin_sigma_m is not None or self.origin_cov_m2 is not None) and self.yaw_sigma_rad is not None
+
+    def origin_covariance(self) -> np.ndarray:
+        """2x2 covariance of the origin in the MAP frame (m^2); zeros if unknown."""
+        if self.origin_cov_m2 is not None:
+            return np.array(self.origin_cov_m2, dtype=float)
+        return np.eye(2) * (self.origin_sigma_m or 0.0) ** 2
+
+    def jacobian_yaw(self, p_map_xy: Sequence[float]) -> np.ndarray:
+        """d(grid xy)/d(yaw) at map point p: diag(s) R'(-yaw) (p - o) with R'(-yaw) = d R(-yaw)/d yaw
+        = [[-sin, cos], [-cos, -sin]]. (The task's R'(theta)(p - o) in the grid-to-map orientation; sign fixed by the
+        finite-difference test.)"""
+        d = np.asarray(p_map_xy, dtype=float)[:2] - np.asarray(self.origin_in_map_m)
+        c, s_ = math.cos(self.yaw_rad), math.sin(self.yaw_rad)
+        return self._signs() * (np.array([[-s_, c], [-c, -s_]]) @ d)
+
+    def jacobian_origin(self) -> np.ndarray:
+        """d(grid xy)/d(origin xy) = -diag(s) R(-yaw) = -J (constant)."""
+        return -self.jacobian()
+
+    def position_covariance(self, p_map_xy: Sequence[float]) -> np.ndarray:
+        """Grid-frame covariance (2x2, m^2) that the registration error adds to a point at map position p:
+        J_o Sigma_o J_o^T + (dg/dyaw)(dg/dyaw)^T sigma_yaw^2 (origin and yaw errors independent: ASSUMPTION; an
+        unknown sigma contributes 0). It is the SAME error for every tag (common mode), so it belongs on the fused
+        position at the cell-probability step, never on the per-observation covariances."""
+        jo = self.jacobian_origin()
+        cov = jo @ self.origin_covariance() @ jo.T
+        if self.yaw_sigma_rad:
+            gy = self.jacobian_yaw(p_map_xy)
+            cov = cov + np.outer(gy, gy) * self.yaw_sigma_rad ** 2
+        return cov
 
     def map_to_grid(self, p_map_xy: Sequence[float]) -> np.ndarray:
         d = np.asarray(p_map_xy, dtype=float)[..., :2] - np.asarray(self.origin_in_map_m)
@@ -164,7 +206,7 @@ class CellProbabilities:
 
 
 def cell_probabilities(reg: GridRegistration, mean_map_xy: Sequence[float], cov_map_xy: np.ndarray,
-                       max_cells: int = 4) -> CellProbabilities:
+                       max_cells: int = 4, include_registration: bool = True) -> CellProbabilities:
     """Integrate the 2D Gaussian position (map covariance rotated into the grid frame) over each cell.
 
     Diagonal grid-frame covariance: exact, product of per-axis normal CDF differences (math.erf).
@@ -173,10 +215,14 @@ def cell_probabilities(reg: GridRegistration, mean_map_xy: Sequence[float], cov_
     error is far below 1e-4 for any covariance (tests compare with a seeded Monte Carlo).
     Candidate cells span mean +/- 5 sigma per axis; mass beyond that is < 1.2e-6 and is dropped, so the returned
     probabilities plus out_of_grid sum to at most 1.
+    include_registration (substep 4.3): add reg.position_covariance(mean) (registration error, common to all tags) in
+    the grid frame. Use it for the FUSED track position only; per-observation probabilities pass False.
     """
     j = reg.jacobian()
     mu = reg.map_to_grid(mean_map_xy)
     cov = j @ np.asarray(cov_map_xy, dtype=float)[:2, :2] @ j.T
+    if include_registration and (reg.origin_sigma_m or reg.origin_cov_m2 is not None or reg.yaw_sigma_rad):
+        cov = cov + reg.position_covariance(mean_map_xy)
     mu0, mu1 = float(mu[0]), float(mu[1])
     sx, sy = math.sqrt(max(float(cov[0, 0]), 0.0)), math.sqrt(max(float(cov[1, 1]), 0.0))
     c = reg.cell_size_m
@@ -239,7 +285,7 @@ def cell_probabilities(reg: GridRegistration, mean_map_xy: Sequence[float], cov_
 
 
 def _deferred_probs(reg: "GridRegistration", mean: np.ndarray, cov: np.ndarray, max_cells: int) -> Dict[Cell, float]:
-    return cell_probabilities(reg, mean, cov, max_cells).as_dict()
+    return cell_probabilities(reg, mean, cov, max_cells, include_registration=False).as_dict()
 
 
 def apply_grid(obs: SurvivorObservation, reg: GridRegistration, max_cells: int = 4) -> None:

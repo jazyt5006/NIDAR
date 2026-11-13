@@ -1,6 +1,6 @@
 # CODEMAP: `src/survivor_tagging/`
 
-Names verified against the code on 2026-11-10 (end of step 3, substep 3.3b). "Library" = runs on the drone: numpy + stdlib only and must NOT import
+Names verified against the code on 2026-11-10 (substep 4.1b; docs/design/*.md are refreshed at the end of Step 4, task 4.2). "Library" = runs on the drone: numpy + stdlib only and must NOT import
 `sim`, `scenarios`, `baseline`, `harness`, `sim_pipelines`, `diagnostics` or `experiments*` (checked by
 `tests/test_pipeline.py` independence test for types, config, geometry, transforms, grid, pipeline, output, corrections,
 tracking, footprint, calibration; it also bans `experiments_calib` and `experiments_layer5`). "Harness" = test world and evaluation, may import anything.
@@ -8,7 +8,9 @@ tracking, footprint, calibration; it also bans `experiments_calib` and `experime
 ## Library
 **`types.py`**: data types, status enums, failure codes (architecture.md b, d). Imports nothing from the package.
 - `Severity`, `TagStatus` (IntEnum), `FailureReason`, `FAILURE_SEVERITY`; frozen dataclasses `Detection`,
-  `CameraIntrinsics`, `DepthMeasurement`, `PoseSample`, `Tag`, `TagResult`; mutable `SurvivorObservation`, `SurvivorTrack`.
+  `CameraIntrinsics`, `DepthMeasurement`, `PoseSample` (+ `covariance_assumed`, 4.1b), `PoseCorrection`, `Tag`, `TagResult`;
+  mutable `SurvivorObservation` (`cell_probs` is lazy since 3.4), `SurvivorTrack`.
+- New codes since 3.3b: FRAME_MISMATCH, TIMESTAMP_INVALID, IMAGE_FORMAT_INVALID (4.1a, REJECT), POSE_COV_ASSUMED (4.1b, DEGRADE).
 - Invariant: every failure is a `FailureReason`; timestamps are int ns with a clock-domain string.
 
 **`config.py`**: parameter registry and JSON loader (architecture.md c). Imports `types`.
@@ -90,6 +92,9 @@ Imports `config`, `grid`, `types`.
   `process_registration(reg, arrival_ns)`, `published()`, `map_revision()`, `final_tags(policy=None, threshold=None)`;
   `l5.recompute_mode` full / affected_tracks; optional telemetry `sink`); `Layer5Params`, `telemetry_params`,
   `tag_result(tag) -> TagResult`.
+- `Layer5Pipeline` also: `advance(arrival_ns)` (clock step without data: pose-wait expiry, flush, telemetry schedule),
+  `publish_seq` (counter of republished tag lists), `job_sink` / `_snapshot` / `complete_rebuild(job)` (off-thread full recompute,
+  3.4), `RebuildJob.run()` (any thread, snapshot only), `RebuiltState`.
 - Order: capture-time pose -> floor plane -> Layer 1 -> camera-to-map -> footprint -> Layer 3 -> Layer 4.
 ## Harness side (simulation only)
 - **`sim.py`**: arena, survivors, RGB-D camera, detector, poses. `SurvivorSpec` (`depth_m`), `Scenario`
@@ -111,6 +116,8 @@ Imports `config`, `grid`, `types`.
 - **`diagnostics.py`**: `diagnose_run`, `format_diag`, `DiagSummary`: why survivors are not confirmed (3.1b).
 - **`experiments.py`**: 3.1b evaluation (pins pre-3.1c Layer 4 values in `PRE_31C_LAYER4`).
 - **`experiments_calib.py`**: 3.1c sweep: `CachePipeline`, `cache_run`, `replay`, `rule_combos`, `acceptable`.
+- **`golden.py`** (3.4: `record` / `check`; golden file `tests/golden/layer5_golden.json.gz`, 234 runs, behaviour gate for
+  optimisations), **`experiments_34.py`** (3.4 timing, profile).
 - **`experiments_layer5.py`** (3.2: R1-R3, F1-F4 tables), **`experiments_33a.py`** (3.3a: `run before|after`, `report`),
   **`experiments_33b.py`** (3.3b: `run`, `report`; stages `calib`, `sweep`, `rc`, `ablation`, `ra`, cached as
   `docs/reports/3.3b_cache_<stage>.json`; a stage is skipped if its cache file exists).
@@ -133,6 +140,10 @@ Imports `config`, `grid`, `types`.
 | `test_double_detection.py` | near-duplicate observations (3.3a), double_detection scenario |
 | `test_two_close.py` | two_close_survivors family (3.3b) |
 | `test_frozen_config.py` | `configs/frozen_synthetic_v1.json` matches the config registry |
+| `test_golden.py`, `test_recompute_async.py` | behaviour gate (seed 0 of the golden file); off-thread rebuild and atomic swap (3.4) |
+| `test_ros_adapters.py`, `test_ros_msgs.py` | ROS-free adapters, message files, mapping completeness (4.1a); helpers `ros_fakes.py` |
+| `test_ros_runtime.py`, `test_ros_node_static.py`, `test_ros_smoke.py` | `TaggerRuntime` incl. AC1 end-to-end equivalence, node shell static checks, converter, smoke tool (4.1b); helper `ros_runtime_helpers.py` |
+| `test_ros_node.py` | rclpy node (skipped without rclpy; NOT RUN on the dev machine) |
 
 ## Commands (from pyproject.toml, CLAUDE.md and module docstrings)
 - All tests: `python -m pytest` (pyproject: testpaths=tests, pythonpath=src). One file: `python -m pytest tests/test_x.py`.
@@ -151,3 +162,21 @@ Imports `config`, `grid`, `types`.
 (`3.2_eval.txt`, `3.3a_*.json|txt`, `3.3b_cache_*.json`, `3.3b_eval.txt`). Reports: `docs/reports/<task>.md` from
 `docs/reports/TEMPLATE.md`; running notes: `docs/reports/NOTES.md`. Frozen parameter listing:
 `configs/frozen_synthetic_v1.json`. No `3.1c.md` report exists; the 3.1c results are in architecture.md.
+
+## ROS 2 side (`ros2/`, not part of `src/`; the library never imports it)
+- `ros2/survivor_tagging_msgs` (ament_cmake): `Detection`, `DetectionArray`, `CandidateCell`, `SurvivorTag`, `SurvivorTagArray`,
+  `TelemetryPacket`, `CorrectionEvent`, `SetGridRegistration.srv`, `CommitFinalTags.srv`. Never built here.
+- `ros2/survivor_tagging_ros` (ament_python), module `survivor_tagging_ros/`:
+  - `adapters.py` (4.1a, pure Python + numpy, duck-typed messages): `AdapterConfig`, `AdapterError`, `ConfigurationError`, stamps
+    (`stamp_to_ns`, `ns_to_stamp`, `StampMonitor`), depth (`depth_image_to_metres`, `depth_image_to_raw`,
+    `depth_measurement_from_image`), `intrinsics_from_camera_info`, detections (`detections_from_array`, `scale_detection_to_depth`),
+    poses (`pose_from_msg`, `frd_to_flu_quaternion`, `ros_covariance_to_library`, `default_pose_covariance`), tags
+    (`tag_to_msg_dict`, `tag_from_msg_dict`, `tag_array_to_msg_dict`, `tag_result_to_msg_dict`), telemetry, `correction_from_msg`,
+    `registration_from_request`, `commit_request_to_args`, mapping tables `TAG_FIELD_MAP` etc.
+  - `runtime.py` (4.1b): `TaggerRuntime` (`on_camera_info`, `on_depth`, `on_detections`, `on_pose`, `on_correction`,
+    `call_set_registration`, `call_commit_final_tags`, `tick`, `finish`, `flush_rebuilds`, `diagnostics`), `RebuildWorker`,
+    `build_markers`, `build_runtime(params, now_ns_fn, publish)`, `build_library_config`. Outputs via `publish(topic_key, payload)`.
+  - `convert.py` (`dict_to_msg`), `tagger_node.py` (rclpy shell, forwards only; NOT RUN), `smoke_test.py` (`--dry-run`, ROS mode,
+    `--write-sim-overrides`), `sim_bridge.py` (simulator -> message dicts; imports the simulator, test side only), `msgdef.py` (.msg parser,
+    validator, CDR size), `launch/tagger.launch.py`, `config/tagger.params.yaml`, `tools/cov_default_effect.py`.
+- Handoff documents: `docs/handoff/ros_interfaces.md`, `docs/handoff/ros_runbook.md`.

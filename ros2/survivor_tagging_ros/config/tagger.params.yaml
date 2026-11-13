@@ -1,0 +1,40 @@
+# Parameters of tagger_node. NOT RUN. Every value is either UNSET (must be filled in before use; the node refuses to
+# start or reports CONFIG_MISSING), ASSUMPTION (our placeholder, check it) or from the frozen file.
+tagger_node:
+  ros__parameters:
+    # Library configuration
+    config_file: ""        # UNSET: absolute path of configs/frozen_synthetic_v1.json (tuning values, simulation tested only)
+    overrides_file: ""     # UNSET: flat library override JSON with extr.T_body_camera_cov, extr.version, clock.*, l1.depth_min_m,
+                           #        l1.depth_max_m, l1.depth_noise_model, l2.max_interp_gap_s, l2.max_rgb_depth_skew_s,
+                           #        l2.pose_mode, grid.* (official grid, Q O1), l5.correction_source (see configs/example_synthetic.json
+                           #        for the key names; its VALUES are test values, never use them on hardware)
+
+    # Topics (all ASSUMPTION placeholders)
+    depth_topic: /camera/aligned_depth_to_color/image_raw
+    camera_info_topic: /camera/aligned_depth_to_color/camera_info
+    detections_topic: /survivor_tagging/detections
+    pose_topic: /slam/pose
+    correction_topic: /slam/correction
+    tags_topic: /survivor_tagging/tags
+    markers_topic: /survivor_tagging/markers
+    telemetry_topic: /survivor_tagging/telemetry
+    diagnostics_topic: /survivor_tagging/diagnostics
+
+    # Pose source
+    pose_topic_type: PoseWithCovarianceStamped   # ASSUMPTION; or Odometry
+    pose_frame: UNSET                            # UNSET: frame_id of the pose messages = the map frame
+    body_frame: UNSET                            # UNSET: child frame of the pose (e.g. base_link)
+    body_frame_convention: FLU                   # ASSUMPTION default FLU; the detection team's README says FRD
+    clock_domain: ros_time                       # ASSUMPTION: label only; all stamps must be on one ROS clock
+    pose.default_position_sigma_m: 0.10          # ASSUMPTION, used only when the pose covariance is unknown (question S1)
+    pose.default_yaw_sigma_rad: 0.05             # ASSUMPTION, same
+
+    # Camera
+    depth_aligned_to_color: UNSET                # UNSET: "true" or "false" (question D2); unset is an error
+    T_body_camera: [0.0]                         # UNSET: 16 values, row-major 4x4 camera-to-body (question H4); one value = unset
+
+    # Runtime
+    depth_buffer_size: 8                         # ASSUMPTION
+    rebuild_in_thread: true                      # ASSUMPTION
+    pose_max_backward_s: 0.0                     # ASSUMPTION: pose stamps may not go backwards
+    tick_period_s: 0.1                           # ASSUMPTION

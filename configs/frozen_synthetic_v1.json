@@ -943,6 +943,54 @@
    "evidence": "none",
    "note": "Unset on purpose: penalty unknown (organiser question O2). Used only as an ASSUMED P in evaluation tables (P = 0..80).",
    "required": false
+  },
+  "grid.origin_sigma_m": {
+   "unit": "m",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Unset on purpose (substep 4.3): registration uncertainty depends on where the drone is placed relative to the grid (open questions O1, O10). Unset = REG_UNCERTAINTY_UNKNOWN warning on every tag, probabilities ignore registration error. Suggested starting value for the mission config (ASSUMPTION, from the 2 ft launch area): 0.3 m.",
+   "required": false
+  },
+  "grid.yaw_sigma_rad": {
+   "unit": "rad",
+   "value": null,
+   "source": "unset: needs measurement or an answer",
+   "evidence": "none",
+   "note": "Unset on purpose (substep 4.3). Suggested starting value for the mission config (ASSUMPTION, launch-area placement): 0.09 rad (5 deg). Same warning behaviour as grid.origin_sigma_m.",
+   "required": false
+  },
+  "grid.wall_alignment_enabled": {
+   "unit": "-",
+   "value": false,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Wall-alignment estimator (substep 4.3) OFF by default: it assumes walls lie on grid lines (O1 not answered). Simulation/unit tested only when enabled.",
+   "required": false
+  },
+  "grid.wall_align_min_quality": {
+   "unit": "-",
+   "value": 0.5,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Substep 4.3 ASSUMPTION; below this quality the estimator makes no update.",
+   "required": false
+  },
+  "grid.reg_update_min_yaw_rad": {
+   "unit": "rad",
+   "value": 0.002,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Substep 4.3 hysteresis ASSUMPTION (about 0.11 deg).",
+   "required": false
+  },
+  "grid.reg_update_min_offset_m": {
+   "unit": "m",
+   "value": 0.02,
+   "source": "ASSUMPTION",
+   "evidence": "unit",
+   "note": "Substep 4.3 hysteresis ASSUMPTION.",
+   "required": false
   }
  },
  "interim_choices": {

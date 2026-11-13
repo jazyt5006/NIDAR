@@ -82,6 +82,16 @@ class FailureReason(str, Enum):
     FRAME_MISMATCH = "FRAME_MISMATCH"  # message frame_id differs from the configured frame
     TIMESTAMP_INVALID = "TIMESTAMP_INVALID"  # zero, negative, malformed or non-monotonic message stamp
     IMAGE_FORMAT_INVALID = "IMAGE_FORMAT_INVALID"  # unsupported encoding, bad shape, stride or data length
+    # ROS runtime (substep 4.1b)
+    POSE_COV_ASSUMED = "POSE_COV_ASSUMED"  # the pose source gave no covariance; a configured default was used
+    # Venue grid registration (substep 4.3)
+    REG_UNCERTAINTY_UNKNOWN = "REG_UNCERTAINTY_UNKNOWN"  # grid.origin_sigma_m / grid.yaw_sigma_rad unset: cell probabilities ignore registration error
+    WALL_ALIGNMENT_DISABLED = "WALL_ALIGNMENT_DISABLED"  # grid.wall_alignment_enabled is false (assumption O1 not accepted)
+    WALL_POINTS_INSUFFICIENT = "WALL_POINTS_INSUFFICIENT"  # too few wall points / linear structure for an estimate
+    WALL_DIRECTION_AMBIGUOUS = "WALL_DIRECTION_AMBIGUOUS"  # walls in one direction only: one offset axis is unobservable
+    WALL_ALIGNMENT_LOW_QUALITY = "WALL_ALIGNMENT_LOW_QUALITY"  # walls do not fit grid lines well enough; no update
+    REG_COARSE_AMBIGUOUS = "REG_COARSE_AMBIGUOUS"  # coarse registration too uncertain to resolve the whole-cell ambiguity
+    REG_UPDATE_BELOW_THRESHOLD = "REG_UPDATE_BELOW_THRESHOLD"  # hysteresis: change too small to justify a recompute
 
 
 _R, _B, _D, _E = Severity.REJECT, Severity.BLOCK, Severity.DEGRADE, Severity.EVENT
@@ -132,6 +142,14 @@ FAILURE_SEVERITY: Dict[FailureReason, Severity] = {
     FailureReason.FRAME_MISMATCH: _R,
     FailureReason.TIMESTAMP_INVALID: _R,
     FailureReason.IMAGE_FORMAT_INVALID: _R,
+    FailureReason.POSE_COV_ASSUMED: _D,
+    FailureReason.REG_UNCERTAINTY_UNKNOWN: _D,  # non-blocking
+    FailureReason.WALL_ALIGNMENT_DISABLED: _E,
+    FailureReason.WALL_POINTS_INSUFFICIENT: _E,
+    FailureReason.WALL_DIRECTION_AMBIGUOUS: _E,
+    FailureReason.WALL_ALIGNMENT_LOW_QUALITY: _E,
+    FailureReason.REG_COARSE_AMBIGUOUS: _E,
+    FailureReason.REG_UPDATE_BELOW_THRESHOLD: _E,
 }
 
 # Spec Part 10 "Failure" column text -> the code that handles it.
@@ -253,6 +271,7 @@ class PoseSample:
     pose_revision: int
     source: str  # provenance, e.g. "slam_2d+fc_attitude+rangefinder"
     covariance: Optional[np.ndarray] = None  # (6, 6) m^2 / rad^2
+    covariance_assumed: bool = False  # True: `covariance` is a configured default, not a measurement (POSE_COV_ASSUMED)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "position_m", _vec(self.position_m, (3,), "position_m"))

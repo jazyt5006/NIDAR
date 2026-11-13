@@ -1,0 +1,17 @@
+scenario                 mode      tags  top_prob(mean)  sigma_h(mean m)  CONFIRMED  correct(any)  has POSE_COV_ASSUMED
+standing                 off          5          0.759            0.166          1         5/5          0
+standing                 on           5          0.725            0.177          1         5/5          5
+sitting                  off          5          0.784            0.153          2         4/5          0
+sitting                  on           5          0.748            0.166          2         4/5          5
+near_wall                off          5          0.938            0.166          5         5/5          0
+near_wall                on           5          0.900            0.177          3         5/5          5
+tilt_30                  off          5          0.798            0.199          0         3/5          0
+tilt_30                  on           5          0.759            0.212          0         3/5          5
+two_adjacent             off         10          0.818            0.169          4         8/10         0
+two_adjacent             on          10          0.801            0.180          4         8/10        10
+cell_boundary            off          5          0.872            0.167          3         0/5          0
+cell_boundary            on           5          0.803            0.178          2         0/5          5
+revisit_after_gap        off          5          0.890            0.083          4         3/5          0
+revisit_after_gap        on           5          0.890            0.083          4         3/5          0
+
+all scenarios: mean top-cell probability off 0.835 -> on 0.803

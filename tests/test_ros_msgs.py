@@ -44,7 +44,8 @@ def test_all_interfaces_are_listed_in_cmake_and_package_xml_is_consistent():
     assert "<build_type>ament_python</build_type>" in ros_xml and "survivor_tagging_msgs" in ros_xml
     assert (rf.ROS_PKG / "resource" / "survivor_tagging_ros").exists() and (rf.ROS_PKG / "setup.cfg").exists()
     setup = (rf.ROS_PKG / "setup.py").read_text(encoding="utf-8")
-    assert '"console_scripts": []' in setup  # no nodes in 4.1a
+    assert "tagger_node = survivor_tagging_ros.tagger_node:main" in setup  # nodes arrived in 4.1b
+    assert "smoke_test = survivor_tagging_ros.smoke_test:main" in setup
 
 
 def test_required_fields_exist():
